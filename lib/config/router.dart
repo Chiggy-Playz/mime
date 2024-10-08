@@ -1,7 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:mime_flutter/pages/home_shell.dart';
-import 'package:mime_flutter/pages/home/page.dart';
-import 'package:mime_flutter/pages/settings/page.dart';
+import 'package:mime_flutter/pages/home/view.dart';
+import 'package:mime_flutter/pages/settings/view.dart';
 
 final router = GoRouter(
   initialLocation: "/home",

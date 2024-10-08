@@ -9,6 +9,8 @@ class MimeApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       routerConfig: router,
+      themeMode: ThemeMode.dark,
+      darkTheme: ThemeData.dark(),
     );
   }
 }

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mime_flutter/app.dart';
 
 const dirPath = "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers";
 
 void main() {
-  runApp(const MimeApp());
+  runApp(const ProviderScope(child: MimeApp()));
 }
 
 extension on BuildContext {
