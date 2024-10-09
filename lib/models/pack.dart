@@ -6,12 +6,20 @@ part 'pack.mapper.dart';
 @MappableClass()
 class PackModel with PackModelMappable {
   String name;
+  String id;
+  String? assetPath;
+  String version;
   List<AssetModel> assets;
 
   PackModel({
     required this.name,
     required this.assets,
+    required this.id,
+    required this.version,
+    this.assetPath,
   });
 
   static const fromJson = PackModelMapper.fromJson;
+
+  int get freeSlots => 30 - assets.length;
 }

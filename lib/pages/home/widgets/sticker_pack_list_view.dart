@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/pages/home/widgets/sticker_pack_preview.dart';
+import 'package:mime_flutter/pages/pack_details/page.dart';
 import 'package:mime_flutter/widgets/info_filler.dart';
+import 'package:go_router/go_router.dart';
 
 class StickerPackListView extends ConsumerStatefulWidget {
   const StickerPackListView({super.key, required this.packs});
@@ -43,7 +45,12 @@ class _StickerPackListViewState extends ConsumerState<StickerPackListView> {
                     clipBehavior: Clip.antiAlias,
                     elevation: 8,
                     child: InkWell(
-                      onTap: () {},
+                      onTap: () {
+                        context.pushNamed(
+                          PackDetailsPage.routeName,
+                          pathParameters: {"id": pack.id},
+                        );
+                      },
                       child: Column(
                         children: [
                           ListTile(
