@@ -212,8 +212,16 @@ class PacksNotifier extends _$PacksNotifier {
   }
 
   Future<void> addAssets(String packIdentifier, List<AssetModel> assets) async {
+    final pack =
+        state.value!.firstWhere((element) => element.id == packIdentifier);
+
     // Validation
     if (assets.isEmpty) return;
+
+    final isAnimated = assets.first.animated;
+    if ((assets + pack.assets).any((asset) => asset.animated != isAnimated)) {
+      throw MixingAnimatedAssetsError();
+    }
 
     // If write to disk, then we save the assets to app's documents directory
     final documentDir = await getApplicationDocumentsDirectory();
@@ -231,12 +239,6 @@ class PacksNotifier extends _$PacksNotifier {
       state.value!.map(
         (pack) {
           if (pack.id != packIdentifier) return pack;
-
-          // All the assets must be either animated or not animated. No mixing allowed
-          final isAnimated = assets.first.animated;
-          if ((assets + pack.assets).any((asset) => asset.animated != isAnimated)) {
-            throw MixingAnimatedAssetsError();
-          }
 
           return PackModel(
             name: pack.name,
