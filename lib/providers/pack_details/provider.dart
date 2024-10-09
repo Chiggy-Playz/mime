@@ -27,12 +27,12 @@ class PackDetailsNotifier extends _$PackDetailsNotifier {
     state = state.copyWith(isImporting: !state.isImporting);
   }
 
-  void toggleAssetSelection(String assetId) {
+  void toggleAssetSelection(int assetIndex) {
     final selectedAssetIds = state.selectedAssetIds.toSet();
-    if (selectedAssetIds.contains(assetId)) {
-      selectedAssetIds.remove(assetId);
+    if (selectedAssetIds.contains(assetIndex)) {
+      selectedAssetIds.remove(assetIndex);
     } else {
-      selectedAssetIds.add(assetId);
+      selectedAssetIds.add(assetIndex);
     }
 
     state = state.copyWith(
@@ -45,7 +45,7 @@ class PackDetailsNotifier extends _$PackDetailsNotifier {
     state = state.copyWith(selectedAssetIds: {});
   }
 
-  void selectAll(List<String> assetIds) {
+  void selectAll(List<int> assetIds) {
     state = state.copyWith(selectedAssetIds: assetIds.toSet());
   }
 }

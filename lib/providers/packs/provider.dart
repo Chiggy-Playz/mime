@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:fast_image_resizer/fast_image_resizer.dart';
-import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter/ffmpeg_kit_config.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_isolate/flutter_isolate.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
@@ -16,12 +19,92 @@ import 'package:whatsapp_stickers_handler/whatsapp_stickers_handler.dart';
 
 part 'provider.g.dart';
 
+// This function will run in the isolate
+@pragma('vm:entry-point')
+Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
+  final SendPort sendPort = params['sendPort'] as SendPort;
+  final assetId = params['assetId'] as String;
+  final bytes = params['bytes'] as List<int>;
+  final assetsDir = params['assetsDir'] as String;
+  final tempDir = params['tempDir'] as String;
+
+  // Initialize FFmpegKit in the isolate
+  await FFmpegKitConfig.init();
+
+  final tempPath = "$tempDir/$assetId";
+  final outputPath = "$assetsDir/$assetId.webp";
+
+  // If the asset is already formatted, skip the processing
+  if (await File(outputPath).exists()) {
+    sendPort.send(true);
+    return;
+  }
+
+  // Write the bytes to temp file
+  final tempFile = File(tempPath);
+  await tempFile.writeAsBytes(bytes);
+
+  // Run ffmpeg to format the asset
+  await FFmpegKit.execute(
+    '-i $tempPath -y -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=#00000000" -vcodec webp -pix_fmt yuva420p $outputPath',
+  );
+
+  // Delete the temp file
+  await tempFile.delete();
+
+  // Inform the main isolate that the task is complete
+  sendPort.send(true);
+}
+
+// This function prepares the data and spawns an isolate for each asset
+Future<void> processAssetsInParallel(
+  List<AssetModel> assets,
+  Directory assetsDir,
+  Directory tempDir,
+) async {
+  final List<FlutterIsolate> isolates = [];
+  final ReceivePort receivePort = ReceivePort();
+
+  for (final asset in assets) {
+    final params = {
+      'sendPort': receivePort.sendPort,
+      'assetId': asset.id,
+      'bytes': asset.bytes!,
+      'assetsDir': assetsDir.path,
+      'tempDir': tempDir.path,
+    };
+
+    // Spawn an isolate for each asset processing task
+    final isolate = await FlutterIsolate.spawn(_processAssetInIsolate, params);
+    isolates.add(isolate);
+  }
+
+  // Wait for all isolates to complete (matching the number of assets)
+  int completedIsolates = 0;
+  await for (final _ in receivePort) {
+    completedIsolates++;
+    if (completedIsolates >= assets.length) {
+      break;
+    }
+  }
+
+  // Kill all isolates after they have completed
+  for (var isolate in isolates) {
+    isolate.kill();
+  }
+
+  // Close the ReceivePort
+  receivePort.close();
+}
+
 /// Assumes `bytes` property is not null for given asset
 Future<void> formatAndSaveAsset(
   Directory assetsDir,
   Directory tempDir,
   AssetModel asset,
 ) async {
+  await FFmpegKitConfig.init();
+
   final tempPath = "${tempDir.path}/${asset.id}";
   final outputPath = "${assetsDir.path}/${asset.id}.webp";
 
@@ -36,6 +119,50 @@ Future<void> formatAndSaveAsset(
 
   // Delete the temp file
   await tempFile.delete();
+}
+
+Future<void> formatAndSaveAssets(
+  Directory assetsDir,
+  Directory tempDir,
+  List<AssetModel> assets,
+) async {
+  final inputPaths = <String>[];
+  final outputPaths = <String>[];
+
+  for (final asset in assets) {
+    final tempPath = "${tempDir.path}/${asset.id}";
+    final outputPath = "${assetsDir.path}/${asset.id}.webp";
+
+    // Write the bytes to temp file
+    final tempFile = File(tempPath);
+    await tempFile.writeAsBytes(asset.bytes!);
+
+    inputPaths.add(tempPath);
+    outputPaths.add(outputPath);
+  }
+
+  // Create a temporary file for the concat demuxer
+  final concatFile = File('${tempDir.path}/temp_concat.txt');
+
+  // Write the input files to the concat file
+  await concatFile
+      .writeAsString(inputPaths.map((path) => "file '$path'").join('\n'));
+
+  // Construct the FFmpeg command
+  final outputs = outputPaths
+      .map((path) =>
+          "-vf \"scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=#00000000\" "
+          "-vcodec webp -pix_fmt yuva420p \"$path\"")
+      .join(' ');
+
+  final command = '-f concat -safe 0 -i ${concatFile.path} -y $outputs';
+
+  // Execute the FFmpeg command
+  await FFmpegKit.execute(command);
+
+  // Clean up the temporary file and the input files
+  await concatFile.delete();
+  await Future.wait(inputPaths.map((path) => File(path).delete()));
 }
 
 @Riverpod()
@@ -84,39 +211,32 @@ class PacksNotifier extends _$PacksNotifier {
     await save();
   }
 
-  Future<void> addAssets(
-    String packIdentifier,
-    List<AssetModel> assets, {
-    bool writeToDisk = true,
-  }) async {
+  Future<void> addAssets(String packIdentifier, List<AssetModel> assets) async {
     // Validation
     if (assets.isEmpty) return;
 
-    // All the assets must be either animated or not animated. No mixing allowed
-    final isAnimated = assets.first.animated;
-    if (assets.any((asset) => asset.animated != isAnimated)) {
-      throw MixingAnimatedAssetsError();
-    }
-
     // If write to disk, then we save the assets to app's documents directory
-    if (writeToDisk) {
-      final documentDir = await getApplicationDocumentsDirectory();
-      final tempDir = await getTemporaryDirectory();
+    final documentDir = await getApplicationDocumentsDirectory();
+    final tempDir = await getTemporaryDirectory();
 
-      // Check if the assets folder exists, if not create it
-      final assetsDir = Directory("${documentDir.path}/assets");
-      if (!await assetsDir.exists()) {
-        await assetsDir.create();
-      }
-
-      await Future.wait(
-          assets.map((asset) => formatAndSaveAsset(assetsDir, tempDir, asset)));
+    // Check if the assets folder exists, if not create it
+    final assetsDir = Directory("${documentDir.path}/assets");
+    if (!await assetsDir.exists()) {
+      await assetsDir.create();
     }
+
+    await processAssetsInParallel(assets, assetsDir, tempDir);
 
     state = AsyncData(
       state.value!.map(
         (pack) {
           if (pack.id != packIdentifier) return pack;
+
+          // All the assets must be either animated or not animated. No mixing allowed
+          final isAnimated = assets.first.animated;
+          if ((assets + pack.assets).any((asset) => asset.animated != isAnimated)) {
+            throw MixingAnimatedAssetsError();
+          }
 
           return PackModel(
             name: pack.name,
@@ -143,7 +263,7 @@ class PacksNotifier extends _$PacksNotifier {
       width: 96,
       height: 96,
     );
-    
+
     final trayIcon = File('${dir.path}/assets/icon.png');
     await trayIcon.writeAsBytes(trayIconBytes!.buffer.asInt8List(),
         flush: true);
@@ -159,7 +279,7 @@ class PacksNotifier extends _$PacksNotifier {
       "",
       "",
       "",
-      false,
+      pack.isAnimated,
       Map.fromEntries(
         pack.assets.map(
           (asset) => MapEntry(

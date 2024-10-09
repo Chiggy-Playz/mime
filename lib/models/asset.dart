@@ -13,6 +13,7 @@ class AssetModel with AssetModelMappable {
   final String name;
   final List<String> tags;
   final bool animated;
+
   Uint8List? bytes;
 
   AssetModel({
@@ -20,7 +21,6 @@ class AssetModel with AssetModelMappable {
     required this.name,
     required this.tags,
     required this.animated,
-    this.bytes,
   });
 
   static const fromJson = AssetModelMapper.fromJson;

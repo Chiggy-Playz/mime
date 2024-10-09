@@ -1,17 +1,18 @@
-import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mime_flutter/config/detectors.dart';
+
 import 'package:mime_flutter/config/extensions/extensions.dart';
+import 'package:mime_flutter/config/mime_icons.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/errors.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
-import 'package:path_provider/path_provider.dart';
 
 class PackDetailsPage extends ConsumerStatefulWidget {
   const PackDetailsPage({
@@ -44,110 +45,120 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
         .value!
         .firstWhere((pack) => pack.id == widget.id);
 
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.delete),
-          ),
-          IconButton(
-            onPressed: syncToWhatsapp,
-            icon: const Icon(Icons.sync),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          children: [
-            Text(
-              pack.name,
-              style: context.textTheme.displaySmall,
+    return PopScope(
+      canPop: !state.isImporting,
+      onPopInvokedWithResult: (didPop, result) {
+        // If importing, do not allow pop
+        if (state.isImporting) {
+          context.showSnackBar("Hol' up while its importing");
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          actions: [
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.delete),
             ),
-            const Gap(8),
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 4,
-              crossAxisSpacing: 6,
-              mainAxisSpacing: 6,
-              children: List.generate(pack.assets.length, (index) {
-                final asset = pack.assets[index];
-                bool selected = state.selectedAssetIds.contains(asset.id);
-                var image = Image.file(asset.file());
-
-                var imagePaddingValue = selected ? 14.0 : 0.0;
-                return GestureDetector(
-                  onLongPress: () {
-                    // if already selected, do nothing
-                    if (selected) return;
-                    if (!state.isSelecting) {
-                      ref
-                          .read(packDetailsNotifierProvider.notifier)
-                          .toggleSelecting();
-                    }
-                    ref
-                        .read(packDetailsNotifierProvider.notifier)
-                        .toggleAssetSelection(asset.id);
-                  },
-                  onTap: () {
-                    // if not in select mode, do nothing
-                    if (!state.isSelecting) return;
-                    // if already selected, deselect
-                    ref
-                        .read(packDetailsNotifierProvider.notifier)
-                        .toggleAssetSelection(asset.id);
-                  },
-                  child: Stack(
-                    fit: StackFit.expand,
-                    alignment: Alignment.center,
-                    children: [
-                      if (state.isSelecting && selected)
-                        Container(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primaryContainer
-                              .withAlpha(100),
-                        ),
-                      AnimatedPadding(
-                        padding: EdgeInsets.all(imagePaddingValue),
-                        duration: const Duration(milliseconds: 150),
-                        child: ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(selected ? 12 : 0),
-                          child: image,
-                        ),
-                      ),
-                      if (state.isSelecting)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          child: Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: Icon(
-                              selected
-                                  ? Icons.check_circle
-                                  : Icons.circle_outlined,
-                              color: selected
-                                  ? context.colorScheme.primary
-                                  : Colors.white,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              }),
+            IconButton(
+              onPressed: syncToWhatsapp,
+              icon: const Icon(Icons.sync),
             ),
           ],
         ),
+        body: Center(
+          child: Column(
+            children: [
+              if (state.isImporting) const LinearProgressIndicator(),
+              Text(
+                pack.name,
+                style: context.textTheme.displaySmall,
+              ),
+              const Gap(8),
+              GridView.count(
+                shrinkWrap: true,
+                crossAxisCount: 4,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
+                children: List.generate(pack.assets.length, (index) {
+                  final asset = pack.assets[index];
+                  bool selected = state.selectedAssetIds.contains(index);
+                  var image = Image.file(asset.file());
+
+                  var imagePaddingValue = selected ? 14.0 : 0.0;
+                  return GestureDetector(
+                    onLongPress: () {
+                      // if already selected, do nothing
+                      if (selected) return;
+                      if (!state.isSelecting) {
+                        ref
+                            .read(packDetailsNotifierProvider.notifier)
+                            .toggleSelecting();
+                      }
+                      ref
+                          .read(packDetailsNotifierProvider.notifier)
+                          .toggleAssetSelection(index);
+                    },
+                    onTap: () {
+                      // if not in select mode, do nothing
+                      if (!state.isSelecting) return;
+                      // if already selected, deselect
+                      ref
+                          .read(packDetailsNotifierProvider.notifier)
+                          .toggleAssetSelection(index);
+                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      alignment: Alignment.center,
+                      children: [
+                        if (state.isSelecting && selected)
+                          Container(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primaryContainer
+                                .withAlpha(100),
+                          ),
+                        AnimatedPadding(
+                          padding: EdgeInsets.all(imagePaddingValue),
+                          duration: const Duration(milliseconds: 150),
+                          child: ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(selected ? 12 : 0),
+                            child: image,
+                          ),
+                        ),
+                        if (state.isSelecting)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            child: Padding(
+                              padding: const EdgeInsets.all(2.0),
+                              child: Icon(
+                                selected
+                                    ? Icons.check_circle
+                                    : Icons.circle_outlined,
+                                color: selected
+                                    ? context.colorScheme.primary
+                                    : Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+        floatingActionButton: state.isViewing
+            ? FloatingActionButton(
+                onPressed: state.isImporting ? null : importPressed,
+                tooltip: "Import",
+                child: const Icon(Icons.download),
+              )
+            : null,
       ),
-      floatingActionButton: state.isViewing
-          ? FloatingActionButton(
-              onPressed: state.isImporting ? null : importPressed,
-              tooltip: "Import",
-              child: const Icon(Icons.download),
-            )
-          : null,
     );
   }
 
@@ -176,13 +187,6 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.file_copy),
-                title: const Text("Import from whatsapp"),
-                onTap: () {
-                  Navigator.of(context).pop("whatsapp");
-                },
-              ),
-              ListTile(
                 leading: const Icon(Icons.folder),
                 title: const Text("Import from files"),
                 onTap: () {
@@ -190,7 +194,14 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.disc_full),
+                leading: const Icon(MimeIcons.whatsapp),
+                title: const Text("Import from whatsapp"),
+                onTap: () {
+                  Navigator.of(context).pop("whatsapp");
+                },
+              ),
+              ListTile(
+                leading: const Icon(MimeIcons.discord),
                 title: const Text("Import from discord"),
                 onTap: () {
                   Navigator.of(context).pop("discord");
@@ -208,19 +219,15 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
     switch (option) {
       case "gallery":
-        context.showSnackBar("Importing from gallery");
         assets = await importFromGallery();
         break;
-      case "whatsapp":
-        context.showSnackBar("Importing from whatsapp");
-        await importFromWhatsapp();
-        break;
       case "files":
-        context.showSnackBar("Importing from files");
         assets = await importFromFiles();
         break;
+      case "whatsapp":
+        await importFromWhatsapp();
+        break;
       case "discord":
-        context.showSnackBar("Importing from discord");
         break;
       default:
         throw UnimplementedError("Unknown option: $option");
@@ -235,11 +242,9 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
     ref.read(packDetailsNotifierProvider.notifier).toggleImporting();
     try {
-      ref.read(packsNotifierProvider.notifier).addAssets(
-            pack.id,
-            assets,
-          );
+      await ref.read(packsNotifierProvider.notifier).addAssets(pack.id, assets);
     } on MixingAnimatedAssetsError catch (err) {
+      if (!mounted) return;
       context.showErrorSnackBar(err.message);
     } finally {
       ref.read(packDetailsNotifierProvider.notifier).toggleImporting();
@@ -261,20 +266,22 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
   }
 
   Future<List<AssetModel>?> importFromFiles() async {
-    return [];
-    // FilePickerResult? result = await FilePicker.platform.pickFiles(
-    //   allowMultiple: true,
-    //   type: FileType.image,
-    //   withData: true,
-    // );
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.image,
+      withData: true,
+      allowCompression: false,
+      compressionQuality: 0,
+    );
 
-    // if (!mounted) return null;
-    // if (result == null) {
-    //   context.showSnackBar("No files selected");
-    //   return null;
-    // }
+    if (!mounted) return null;
+    if (result == null) {
+      context.showSnackBar("No files selected");
+      return null;
+    }
 
-    // return result.files.map((file) => file.bytes!).toList();
+    return await Future.wait(
+        result.xFiles.map((image) => convertXfileToAsset(image)));
   }
 
   Future<void> importFromWhatsapp() async {}
@@ -282,13 +289,14 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
   Future<AssetModel> convertXfileToAsset(XFile image) async {
     final bytes = await image.readAsBytes();
     final hash = md5.convert(bytes).toString();
+    bool animated = isAnimated(bytes);
+
     return AssetModel(
       id: hash,
       name: image.name,
       tags: [],
-      animated: false,
-      bytes: bytes,
-    );
+      animated: animated,
+    )..bytes = bytes;
   }
 
   Future<void> syncToWhatsapp() async {

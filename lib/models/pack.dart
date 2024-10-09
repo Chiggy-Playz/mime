@@ -22,4 +22,5 @@ class PackModel with PackModelMappable {
   static const fromJson = PackModelMapper.fromJson;
 
   int get freeSlots => 30 - assets.length;
+  bool get isAnimated => assets.isNotEmpty && assets.first.animated;
 }

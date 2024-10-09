@@ -7,7 +7,7 @@ class PackDetailsState with PackDetailsStateMappable {
   final bool isSelecting;
   final bool isEditing;
   final bool isImporting;
-  final Set<String> selectedAssetIds;
+  final Set<int> selectedAssetIds;
 
   const PackDetailsState({
     required this.isSelecting,
