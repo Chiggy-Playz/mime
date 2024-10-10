@@ -97,74 +97,6 @@ Future<void> processAssetsInParallel(
   receivePort.close();
 }
 
-/// Assumes `bytes` property is not null for given asset
-Future<void> formatAndSaveAsset(
-  Directory assetsDir,
-  Directory tempDir,
-  AssetModel asset,
-) async {
-  await FFmpegKitConfig.init();
-
-  final tempPath = "${tempDir.path}/${asset.id}";
-  final outputPath = "${assetsDir.path}/${asset.id}.webp";
-
-  // Write the bytes to temp file
-  final tempFile = File(tempPath);
-  await tempFile.writeAsBytes(asset.bytes!);
-
-  // Run ffmpeg to format the asset
-  await FFmpegKit.execute(
-    '-i $tempPath -y -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=#00000000" -vcodec webp -pix_fmt yuva420p $outputPath',
-  );
-
-  // Delete the temp file
-  await tempFile.delete();
-}
-
-Future<void> formatAndSaveAssets(
-  Directory assetsDir,
-  Directory tempDir,
-  List<AssetModel> assets,
-) async {
-  final inputPaths = <String>[];
-  final outputPaths = <String>[];
-
-  for (final asset in assets) {
-    final tempPath = "${tempDir.path}/${asset.id}";
-    final outputPath = "${assetsDir.path}/${asset.id}.webp";
-
-    // Write the bytes to temp file
-    final tempFile = File(tempPath);
-    await tempFile.writeAsBytes(asset.bytes!);
-
-    inputPaths.add(tempPath);
-    outputPaths.add(outputPath);
-  }
-
-  // Create a temporary file for the concat demuxer
-  final concatFile = File('${tempDir.path}/temp_concat.txt');
-
-  // Write the input files to the concat file
-  await concatFile
-      .writeAsString(inputPaths.map((path) => "file '$path'").join('\n'));
-
-  // Construct the FFmpeg command
-  final outputs = outputPaths
-      .map((path) =>
-          "-vf \"scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=#00000000\" "
-          "-vcodec webp -pix_fmt yuva420p \"$path\"")
-      .join(' ');
-
-  final command = '-f concat -safe 0 -i ${concatFile.path} -y $outputs';
-
-  // Execute the FFmpeg command
-  await FFmpegKit.execute(command);
-
-  // Clean up the temporary file and the input files
-  await concatFile.delete();
-  await Future.wait(inputPaths.map((path) => File(path).delete()));
-}
-
 @Riverpod()
 class PacksNotifier extends _$PacksNotifier {
   SharedPreferences? prefs;
@@ -223,7 +155,12 @@ class PacksNotifier extends _$PacksNotifier {
       throw MixingAnimatedAssetsError();
     }
 
-    // If write to disk, then we save the assets to app's documents directory
+    // Remove any duplicate assets from itself and the pack
+    assets.removeWhere((asset) => pack.assets.contains(asset));
+
+    if (assets.isEmpty) return;
+
+    // Save the assets to app's documents directory
     final documentDir = await getApplicationDocumentsDirectory();
     final tempDir = await getTemporaryDirectory();
 
