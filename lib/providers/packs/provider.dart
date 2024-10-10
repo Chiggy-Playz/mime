@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:whatsapp_stickers_handler/exceptions.dart';
 import 'package:whatsapp_stickers_handler/whatsapp_stickers_handler.dart';
 
 part 'provider.g.dart';
@@ -209,24 +210,28 @@ class PacksNotifier extends _$PacksNotifier {
 
     final WhatsappStickersHandler whatsappStickersHandler =
         WhatsappStickersHandler();
-
-    await whatsappStickersHandler.addStickerPack(
-      pack.id,
-      pack.name,
-      "Chiggy",
-      "file://${trayIcon.path}",
-      "",
-      "",
-      "",
-      pack.isAnimated,
-      Map.fromEntries(
-        pack.assets.map(
-          (asset) => MapEntry(
-            "file://${asset.path()}",
-            ["🫠"],
+    try {
+      await whatsappStickersHandler.addStickerPack(
+        pack.id,
+        pack.name,
+        "Chiggy",
+        "file://${trayIcon.path}",
+        "",
+        "",
+        "",
+        pack.isAnimated,
+        Map.fromEntries(
+          pack.assets.map(
+            (asset) => MapEntry(
+              "file://${asset.path()}",
+              ["🫠"],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } on WhatsappStickersException catch (e) {
+      if (e.cause == "already_added") return;
+      rethrow;
+    }
   }
 }
