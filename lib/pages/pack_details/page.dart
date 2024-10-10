@@ -45,26 +45,95 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
         .value!
         .firstWhere((pack) => pack.id == widget.id);
 
+    List<Widget> actions = [
+      IconButton(
+        onPressed: () {},
+        icon: const Icon(Icons.edit),
+      ),
+      IconButton(
+        onPressed: syncToWhatsapp,
+        icon: const Icon(Icons.sync),
+      ),
+      MenuAnchor(
+        menuChildren: [
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.sell),
+            child: const Text("Edit tags"),
+            onPressed: () {},
+          ),
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.delete),
+            child: const Text("Delete pack"),
+            onPressed: () {
+              context.showSnackBar("aa");
+            },
+          ),
+        ],
+        builder: (context, controller, child) => IconButton(
+          onPressed: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          icon: const Icon(Icons.more_vert),
+        ),
+      )
+    ];
+
+    if (state.isImporting) {
+      actions = [];
+    }
+
+    if (state.isSelecting) {
+      actions = [
+        IconButton(
+          onPressed: () {
+            if (state.selectedAssetIds.length == pack.assets.length) {
+              ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
+            } else {
+              ref
+                  .read(packDetailsNotifierProvider.notifier)
+                  .selectAll(List.generate(pack.assets.length, (i) => i));
+            }
+          },
+          icon: const Icon(Icons.select_all),
+        ),
+      ];
+    }
+
     return PopScope(
-      canPop: !state.isImporting,
+      canPop: !state.isImporting && !state.isSelecting,
       onPopInvokedWithResult: (didPop, result) {
         // If importing, do not allow pop
         if (state.isImporting) {
           context.showSnackBar("Hol' up while its importing");
         }
+
+        // If selecting, clear selection
+        if (state.isSelecting) {
+          ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
+        }
       },
       child: Scaffold(
         appBar: AppBar(
-          actions: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.delete),
-            ),
-            IconButton(
-              onPressed: syncToWhatsapp,
-              icon: const Icon(Icons.sync),
-            ),
-          ],
+          automaticallyImplyLeading: !state.isSelecting,
+          title: state.isSelecting
+              ? ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(8),
+                  ),
+                  icon: const Icon(Icons.close),
+                  label: Text(state.selectedAssetIds.length.toString()),
+                  onPressed: () {
+                    ref
+                        .read(packDetailsNotifierProvider.notifier)
+                        .toggleSelecting();
+                  },
+                )
+              : null,
+          actions: actions,
         ),
         body: Center(
           child: Column(
@@ -75,79 +144,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
                 style: context.textTheme.displaySmall,
               ),
               const Gap(8),
-              GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: 4,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
-                children: List.generate(pack.assets.length, (index) {
-                  final asset = pack.assets[index];
-                  bool selected = state.selectedAssetIds.contains(index);
-                  var image = Image.file(asset.file());
-
-                  var imagePaddingValue = selected ? 14.0 : 0.0;
-                  return GestureDetector(
-                    onLongPress: () {
-                      // if already selected, do nothing
-                      if (selected) return;
-                      if (!state.isSelecting) {
-                        ref
-                            .read(packDetailsNotifierProvider.notifier)
-                            .toggleSelecting();
-                      }
-                      ref
-                          .read(packDetailsNotifierProvider.notifier)
-                          .toggleAssetSelection(index);
-                    },
-                    onTap: () {
-                      // if not in select mode, do nothing
-                      if (!state.isSelecting) return;
-                      // if already selected, deselect
-                      ref
-                          .read(packDetailsNotifierProvider.notifier)
-                          .toggleAssetSelection(index);
-                    },
-                    child: Stack(
-                      fit: StackFit.expand,
-                      alignment: Alignment.center,
-                      children: [
-                        if (state.isSelecting && selected)
-                          Container(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primaryContainer
-                                .withAlpha(100),
-                          ),
-                        AnimatedPadding(
-                          padding: EdgeInsets.all(imagePaddingValue),
-                          duration: const Duration(milliseconds: 150),
-                          child: ClipRRect(
-                            borderRadius:
-                                BorderRadius.circular(selected ? 12 : 0),
-                            child: image,
-                          ),
-                        ),
-                        if (state.isSelecting)
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            child: Padding(
-                              padding: const EdgeInsets.all(2.0),
-                              child: Icon(
-                                selected
-                                    ? Icons.check_circle
-                                    : Icons.circle_outlined,
-                                color: selected
-                                    ? context.colorScheme.primary
-                                    : Colors.white,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
+              StickersGridView(pack: pack),
             ],
           ),
         ),
@@ -301,5 +298,92 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
   Future<void> syncToWhatsapp() async {
     ref.read(packsNotifierProvider.notifier).syncPack(pack.id);
+  }
+}
+
+class StickersGridView extends ConsumerStatefulWidget {
+  const StickersGridView({super.key, required this.pack});
+
+  final PackModel pack;
+
+  @override
+  ConsumerState<ConsumerStatefulWidget> createState() =>
+      _StickersGridViewState();
+}
+
+class _StickersGridViewState extends ConsumerState<StickersGridView> {
+  PackModel get pack => widget.pack;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(packDetailsNotifierProvider);
+
+    return GridView.count(
+      shrinkWrap: true,
+      crossAxisCount: 4,
+      crossAxisSpacing: 6,
+      mainAxisSpacing: 6,
+      children: List.generate(pack.assets.length, (index) {
+        final asset = pack.assets[index];
+        bool selected = state.selectedAssetIds.contains(index);
+        var image = Image.file(asset.file());
+
+        var imagePaddingValue = selected ? 14.0 : 0.0;
+        return GestureDetector(
+          onLongPress: () {
+            // if already selected, do nothing
+            if (selected) return;
+            if (!state.isSelecting) {
+              ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
+            }
+            ref
+                .read(packDetailsNotifierProvider.notifier)
+                .toggleAssetSelection(index);
+          },
+          onTap: () {
+            // if not in select mode, do nothing
+            if (!state.isSelecting) return;
+            // if already selected, deselect
+            ref
+                .read(packDetailsNotifierProvider.notifier)
+                .toggleAssetSelection(index);
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.center,
+            children: [
+              if (state.isSelecting && selected)
+                Container(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withAlpha(100),
+                ),
+              AnimatedPadding(
+                padding: EdgeInsets.all(imagePaddingValue),
+                duration: const Duration(milliseconds: 150),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(selected ? 12 : 0),
+                  child: image,
+                ),
+              ),
+              if (state.isSelecting)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(2.0),
+                    child: Icon(
+                      selected ? Icons.check_circle : Icons.circle_outlined,
+                      color:
+                          selected ? context.colorScheme.primary : Colors.white,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      }),
+    );
   }
 }
