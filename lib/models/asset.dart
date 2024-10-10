@@ -25,6 +25,15 @@ class AssetModel with AssetModelMappable {
 
   static const fromJson = AssetModelMapper.fromJson;
 
+  // Equality based on id
+  @override
+  bool operator ==(Object other) {
+    return other is AssetModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
   String path() {
     return "${directory!.path}/$id.webp";
   }
