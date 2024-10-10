@@ -16,7 +16,7 @@ class PackDetailsNotifier extends _$PackDetailsNotifier {
   }
 
   void toggleSelecting() {
-    state = state.copyWith(isSelecting: !state.isSelecting);
+    state = state.copyWith(isSelecting: !state.isSelecting, selectedAssetIds: {});
   }
 
   void toggleEditing() {
