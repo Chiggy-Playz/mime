@@ -8,7 +8,6 @@ extension BuildContextExtensions on BuildContext {
     ScaffoldMessenger.of(this).showSnackBar(SnackBar(
       content: Text(message),
       behavior: floating ? SnackBarBehavior.floating : SnackBarBehavior.fixed,
-      duration: Durations.long1,
       action: action,
     ));
   }
