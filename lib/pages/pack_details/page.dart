@@ -6,17 +6,17 @@ import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:mime_flutter/config/constants.dart';
 import 'package:mime_flutter/config/detectors.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/config/mime_icons.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
+import 'package:mime_flutter/pages/pack_details/widgets/selected_assets_options_sheet.dart';
+import 'package:mime_flutter/pages/pack_details/widgets/stickers_grid_view.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/errors.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
 import 'package:mime_flutter/widgets/confirmation_dialog.dart';
-import 'package:vibration/vibration.dart';
 
 class PackDetailsPage extends ConsumerStatefulWidget {
   const PackDetailsPage({
@@ -166,7 +166,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
               )
             : null,
         bottomSheet:
-            state.isSelecting ? const SelectedAssetsOptionsSheet() : null,
+            state.isSelecting ? SelectedAssetsOptionsSheet(pack: pack) : null,
       ),
     );
   }
@@ -333,208 +333,5 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
     context.pop();
     await ref.read(packsNotifierProvider.notifier).deletePack(pack.id);
-  }
-}
-
-class StickersGridView extends ConsumerStatefulWidget {
-  const StickersGridView({super.key, required this.pack});
-
-  final PackModel pack;
-
-  @override
-  ConsumerState<ConsumerStatefulWidget> createState() =>
-      _StickersGridViewState();
-}
-
-class _StickersGridViewState extends ConsumerState<StickersGridView> {
-  PackModel get pack => widget.pack;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(packDetailsNotifierProvider);
-
-    return GridView.count(
-      shrinkWrap: true,
-      crossAxisCount: 4,
-      crossAxisSpacing: 6,
-      mainAxisSpacing: 6,
-      children: List.generate(pack.assets.length, (index) {
-        final asset = pack.assets[index];
-        bool selected = state.selectedAssetIds.contains(index);
-        var image = Image.file(asset.file());
-
-        var imagePaddingValue = selected ? 14.0 : 0.0;
-        return GestureDetector(
-          onLongPress: () {
-            // if already selected, do nothing
-            if (selected) return;
-            if (!state.isSelecting) {
-              if (canVibrate) Vibration.vibrate(duration: 10);
-              ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
-            }
-            ref
-                .read(packDetailsNotifierProvider.notifier)
-                .toggleAssetSelection(index);
-          },
-          onTap: () {
-            // if not in select mode, do nothing
-            if (!state.isSelecting) return;
-            // if already selected, deselect
-            ref
-                .read(packDetailsNotifierProvider.notifier)
-                .toggleAssetSelection(index);
-          },
-          child: Stack(
-            fit: StackFit.expand,
-            alignment: Alignment.center,
-            children: [
-              if (state.isSelecting && selected)
-                Container(
-                  color: context.colorScheme.primaryContainer.withAlpha(100),
-                ),
-              AnimatedPadding(
-                padding: EdgeInsets.all(imagePaddingValue),
-                duration: const Duration(milliseconds: 150),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(selected ? 12 : 0),
-                  child: image,
-                ),
-              ),
-              if (state.isSelecting)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(2.0),
-                    child: Icon(
-                      selected ? Icons.check_circle : Icons.circle_outlined,
-                      color:
-                          selected ? context.colorScheme.primary : Colors.white,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class SelectedAssetsOptionsSheet extends ConsumerStatefulWidget {
-  const SelectedAssetsOptionsSheet({super.key});
-
-  @override
-  ConsumerState<SelectedAssetsOptionsSheet> createState() =>
-      _SelectedAssetsOptionsSheetState();
-}
-
-class _SelectedAssetsOptionsSheetState
-    extends ConsumerState<SelectedAssetsOptionsSheet> {
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(packDetailsNotifierProvider);
-
-    return TweenAnimationBuilder(
-      tween: Tween<double>(
-        begin: 0.0,
-        end: state.selectedAssetIds.isNotEmpty ? 0.16 : 0.0,
-      ),
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOutQuad,
-      builder: (context, value, child) {
-        return DraggableScrollableSheet(
-          expand: false,
-          minChildSize: 0.0,
-          initialChildSize: value,
-          builder: (context, controller) {
-            return Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: context.colorScheme.surfaceContainer,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16.0),
-                  topRight: Radius.circular(16.0),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        if (state.selectedAssetIds.length == 1)
-                          LabeledIcon(
-                            iconData: Icons.edit,
-                            label: "Edit \nName",
-                            onTap: () async {},
-                          ),
-                        LabeledIcon(
-                          iconData: Icons.label,
-                          label: "Edit \nTags",
-                          onTap: () async {},
-                        ),
-                        LabeledIcon(
-                          iconData: Icons.delete,
-                          label: "Remove",
-                          onTap: () async {},
-                        ),
-                        LabeledIcon(
-                          iconData: Icons.share,
-                          label: "Share",
-                          onTap: () async {},
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class LabeledIcon extends StatelessWidget {
-  const LabeledIcon(
-      {super.key,
-      required this.iconData,
-      required this.label,
-      required this.onTap});
-
-  final IconData iconData;
-  final String label;
-  final Future<void> Function() onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(64),
-        radius: 128,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-          child: Column(
-            children: [
-              Icon(iconData, size: 24),
-              const Gap(8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

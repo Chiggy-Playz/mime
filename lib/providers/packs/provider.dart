@@ -26,7 +26,7 @@ part 'provider.g.dart';
 Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
   final SendPort sendPort = params['sendPort'] as SendPort;
   final assetId = params['assetId'] as String;
-  final bytes = params['bytes'] as List<int>;
+  final bytes = params['bytes'] as List<int>?;
   final assetsDir = params['assetsDir'] as String;
   final tempDir = params['tempDir'] as String;
 
@@ -44,7 +44,7 @@ Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
 
   // Write the bytes to temp file
   final tempFile = File(tempPath);
-  await tempFile.writeAsBytes(bytes);
+  await tempFile.writeAsBytes(bytes!);
 
   // Run ffmpeg to format the asset
   await FFmpegKit.execute(
@@ -71,7 +71,7 @@ Future<void> processAssetsInParallel(
     final params = {
       'sendPort': receivePort.sendPort,
       'assetId': asset.id,
-      'bytes': asset.bytes!,
+      'bytes': asset.bytes,
       'assetsDir': assetsDir.path,
       'tempDir': tempDir.path,
     };
@@ -145,49 +145,6 @@ class PacksNotifier extends _$PacksNotifier {
     await save();
   }
 
-  Future<void> addAssets(String packIdentifier, List<AssetModel> assets) async {
-    final pack =
-        state.value!.firstWhere((element) => element.id == packIdentifier);
-
-    // Validation
-    if (assets.isEmpty) return;
-
-    final isAnimated = assets.first.animated;
-    if ((assets + pack.assets).any((asset) => asset.animated != isAnimated)) {
-      throw MixingAnimatedAssetsError();
-    }
-
-    // Remove any duplicate assets from itself and the pack
-    assets.removeWhere((asset) => pack.assets.contains(asset));
-
-    if (assets.isEmpty) return;
-
-    // Check if the assets folder exists, if not create it
-    final assetsDir = Directory("${docsDir.path}/assets");
-    if (!await assetsDir.exists()) {
-      await assetsDir.create();
-    }
-
-    await processAssetsInParallel(assets, assetsDir, tempDir);
-
-    state = AsyncData(
-      state.value!.map(
-        (pack) {
-          if (pack.id != packIdentifier) return pack;
-
-          return PackModel(
-            name: pack.name,
-            id: pack.id,
-            assets: pack.assets + assets,
-            version: pack.version.increment(),
-          );
-        },
-      ).toList(),
-    );
-
-    await save();
-  }
-
   Future<void> syncPack(String id) async {
     final pack = state.value!.firstWhere((element) => element.id == id);
 
@@ -236,5 +193,72 @@ class PacksNotifier extends _$PacksNotifier {
       if (e.cause == "already_added") return;
       rethrow;
     }
+  }
+
+  Future<void> addAssets(String packIdentifier, List<AssetModel> assets) async {
+    final pack =
+        state.value!.firstWhere((element) => element.id == packIdentifier);
+
+    // Validation
+    if (assets.isEmpty) return;
+
+    final isAnimated = assets.first.animated;
+    if ((assets + pack.assets).any((asset) => asset.animated != isAnimated)) {
+      throw MixingAnimatedAssetsError();
+    }
+
+    // Remove any duplicate assets from itself and the pack
+    assets.removeWhere((asset) => pack.assets.contains(asset));
+
+    if (assets.isEmpty) return;
+
+    // Check if the assets folder exists, if not create it
+    final assetsDir = Directory("${docsDir.path}/assets");
+    if (!await assetsDir.exists()) {
+      await assetsDir.create();
+    }
+
+    await processAssetsInParallel(assets, assetsDir, tempDir);
+
+    state = AsyncData(
+      state.value!.map(
+        (pack) {
+          if (pack.id != packIdentifier) return pack;
+
+          return PackModel(
+            name: pack.name,
+            id: pack.id,
+            assets: pack.assets + assets,
+            version: pack.version.increment(),
+          );
+        },
+      ).toList(),
+    );
+
+    await save();
+  }
+
+  Future<void> removeAssets(
+      String packIdentifier, List<AssetModel> assetsToRemove) async {
+    if (assetsToRemove.isEmpty) return;
+
+    state = AsyncData(
+      state.value!.map(
+        (pack) {
+          if (pack.id != packIdentifier) return pack;
+
+          return PackModel(
+            name: pack.name,
+            id: pack.id,
+            assets: pack.assets
+                .where((asset) => !assetsToRemove.contains(asset))
+                .toList(),
+            version: pack.version.increment(),
+          );
+        },
+      ).toList(),
+    );
+
+    await save();
   }
 }
