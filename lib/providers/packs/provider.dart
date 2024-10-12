@@ -191,6 +191,12 @@ class PacksNotifier extends _$PacksNotifier {
   Future<void> syncPack(String id) async {
     final pack = state.value!.firstWhere((element) => element.id == id);
 
+    // Validate the pack
+    // Number of assets should be at least 3 and at most 30
+    if (pack.assets.length < 3 || pack.assets.length > 30) {
+      throw InvalidPackSizeError();
+    }
+
     final dir = await getApplicationDocumentsDirectory();
 
     // Prepare tray icon

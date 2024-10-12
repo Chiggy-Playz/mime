@@ -310,7 +310,12 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
   }
 
   Future<void> syncToWhatsapp() async {
-    ref.read(packsNotifierProvider.notifier).syncPack(pack.id);
+    try {
+      await ref.read(packsNotifierProvider.notifier).syncPack(pack.id);
+    } on InvalidPackSizeError catch (err) {
+      if (!mounted) return;
+      context.showErrorSnackBar(err.message);
+    }
   }
 
   Future<void> deletePack() async {
