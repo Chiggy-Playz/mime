@@ -18,9 +18,8 @@ class _HomeViewState extends ConsumerState<HomeView> {
   Widget build(BuildContext context) {
     return ref.watch(packsNotifierProvider).when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_a, __bb) => Center(
-            child: Text(
-                "Ooops, an error occurred. Try restarting the app?: $_a, $__bb"),
+          error: (_, __) => const Center(
+            child: Text("Ooops, an error occurred. Try restarting the app?"),
           ),
           data: (packs) {
             return StickerPackListView(packs: packs);

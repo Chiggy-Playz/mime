@@ -9,10 +9,10 @@ import 'package:mime_flutter/app.dart';
 import 'package:image_picker_android/image_picker_android.dart';
 // ignore: depend_on_referenced_packages
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:mime_flutter/config/constants.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:path_provider/path_provider.dart';
-
-const dirPath = "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers";
+import 'package:vibration/vibration.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,10 +25,13 @@ void main() async {
   }
 
   // Load documents directory for the AssetModel
-  final docsDir = await getApplicationDocumentsDirectory();
+  docsDir = await getApplicationDocumentsDirectory();
+  tempDir = await getTemporaryDirectory();
   AssetModel.directory = Directory("${docsDir.path}/assets");
 
   FFmpegKitConfig.setSessionHistorySize(32);
+
+  canVibrate = await Vibration.hasVibrator() ?? false;
 
   runApp(const ProviderScope(child: MimeApp()));
 }

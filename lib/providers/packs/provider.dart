@@ -7,6 +7,7 @@ import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter/ffmpeg_kit_config.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_isolate/flutter_isolate.dart';
+import 'package:mime_flutter/config/constants.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
@@ -161,12 +162,8 @@ class PacksNotifier extends _$PacksNotifier {
 
     if (assets.isEmpty) return;
 
-    // Save the assets to app's documents directory
-    final documentDir = await getApplicationDocumentsDirectory();
-    final tempDir = await getTemporaryDirectory();
-
     // Check if the assets folder exists, if not create it
-    final assetsDir = Directory("${documentDir.path}/assets");
+    final assetsDir = Directory("${docsDir.path}/assets");
     if (!await assetsDir.exists()) {
       await assetsDir.create();
     }

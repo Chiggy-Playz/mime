@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mime_flutter/config/detectors.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:mime_flutter/config/constants.dart';
+import 'package:mime_flutter/config/detectors.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/config/mime_icons.dart';
 import 'package:mime_flutter/models/asset.dart';
@@ -13,6 +15,8 @@ import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/errors.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
+import 'package:mime_flutter/widgets/confirmation_dialog.dart';
+import 'package:vibration/vibration.dart';
 
 class PackDetailsPage extends ConsumerStatefulWidget {
   const PackDetailsPage({
@@ -40,10 +44,18 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(packDetailsNotifierProvider);
-    pack = ref
+
+    // We are doing a firstOrNull becuase this build function refires when the
+    // pack is deleted, so the id isnt found in the packs list. And it errors out.
+    final packT = ref
         .watch(packsNotifierProvider)
         .value!
-        .firstWhere((pack) => pack.id == widget.id);
+        .where((pack) => pack.id == widget.id)
+        .firstOrNull;
+
+    if (packT != null) {
+      pack = packT;
+    }
 
     List<Widget> actions = [
       IconButton(
@@ -57,16 +69,14 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
       MenuAnchor(
         menuChildren: [
           MenuItemButton(
-            leadingIcon: const Icon(Icons.sell),
+            leadingIcon: const Icon(Icons.label),
             child: const Text("Edit tags"),
             onPressed: () {},
           ),
           MenuItemButton(
             leadingIcon: const Icon(Icons.delete),
+            onPressed: deletePack,
             child: const Text("Delete pack"),
-            onPressed: () {
-              context.showSnackBar("aa");
-            },
           ),
         ],
         builder: (context, controller, child) => IconButton(
@@ -155,6 +165,8 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
                 child: const Icon(Icons.download),
               )
             : null,
+        bottomSheet:
+            state.isSelecting ? const SelectedAssetsOptionsSheet() : null,
       ),
     );
   }
@@ -291,13 +303,31 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
     return AssetModel(
       id: hash,
       name: image.name,
-      tags: [],
+      tags: {},
       animated: animated,
+      emojis: ["🫠"],
     )..bytes = bytes;
   }
 
   Future<void> syncToWhatsapp() async {
     ref.read(packsNotifierProvider.notifier).syncPack(pack.id);
+  }
+
+  Future<void> deletePack() async {
+    // Confirm Dialog
+    final confirmed = await showConfirmationDialog(
+      title: "Delete ${pack.name}",
+      message:
+          "Are you sure you want to delete this pack? This action is irreversible and stickers will be lost.",
+      context: context,
+      dangerous: true,
+    );
+
+    if (!confirmed) return;
+    if (!mounted) return;
+
+    context.pop();
+    await ref.read(packsNotifierProvider.notifier).deletePack(pack.id);
   }
 }
 
@@ -334,6 +364,7 @@ class _StickersGridViewState extends ConsumerState<StickersGridView> {
             // if already selected, do nothing
             if (selected) return;
             if (!state.isSelecting) {
+              if (canVibrate) Vibration.vibrate(duration: 10);
               ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
             }
             ref
@@ -354,10 +385,7 @@ class _StickersGridViewState extends ConsumerState<StickersGridView> {
             children: [
               if (state.isSelecting && selected)
                 Container(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withAlpha(100),
+                  color: context.colorScheme.primaryContainer.withAlpha(100),
                 ),
               AnimatedPadding(
                 padding: EdgeInsets.all(imagePaddingValue),
@@ -384,6 +412,124 @@ class _StickersGridViewState extends ConsumerState<StickersGridView> {
           ),
         );
       }),
+    );
+  }
+}
+
+class SelectedAssetsOptionsSheet extends ConsumerStatefulWidget {
+  const SelectedAssetsOptionsSheet({super.key});
+
+  @override
+  ConsumerState<SelectedAssetsOptionsSheet> createState() =>
+      _SelectedAssetsOptionsSheetState();
+}
+
+class _SelectedAssetsOptionsSheetState
+    extends ConsumerState<SelectedAssetsOptionsSheet> {
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(packDetailsNotifierProvider);
+
+    return TweenAnimationBuilder(
+      tween: Tween<double>(
+        begin: 0.0,
+        end: state.selectedAssetIds.isNotEmpty ? 0.16 : 0.0,
+      ),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutQuad,
+      builder: (context, value, child) {
+        return DraggableScrollableSheet(
+          expand: false,
+          minChildSize: 0.0,
+          initialChildSize: value,
+          builder: (context, controller) {
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: context.colorScheme.surfaceContainer,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16.0),
+                  topRight: Radius.circular(16.0),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        if (state.selectedAssetIds.length == 1)
+                          LabeledIcon(
+                            iconData: Icons.edit,
+                            label: "Edit \nName",
+                            onTap: () async {},
+                          ),
+                        LabeledIcon(
+                          iconData: Icons.label,
+                          label: "Edit \nTags",
+                          onTap: () async {},
+                        ),
+                        LabeledIcon(
+                          iconData: Icons.delete,
+                          label: "Remove",
+                          onTap: () async {},
+                        ),
+                        LabeledIcon(
+                          iconData: Icons.share,
+                          label: "Share",
+                          onTap: () async {},
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class LabeledIcon extends StatelessWidget {
+  const LabeledIcon(
+      {super.key,
+      required this.iconData,
+      required this.label,
+      required this.onTap});
+
+  final IconData iconData;
+  final String label;
+  final Future<void> Function() onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(64),
+        radius: 128,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+          child: Column(
+            children: [
+              Icon(iconData, size: 24),
+              const Gap(8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

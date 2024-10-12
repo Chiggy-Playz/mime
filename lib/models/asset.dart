@@ -11,8 +11,9 @@ class AssetModel with AssetModelMappable {
 
   final String id;
   final String name;
-  final List<String> tags;
+  final Set<String> tags;
   final bool animated;
+  final List<String> emojis;
 
   Uint8List? bytes;
 
@@ -21,6 +22,7 @@ class AssetModel with AssetModelMappable {
     required this.name,
     required this.tags,
     required this.animated,
+    required this.emojis,
   });
 
   static const fromJson = AssetModelMapper.fromJson;
