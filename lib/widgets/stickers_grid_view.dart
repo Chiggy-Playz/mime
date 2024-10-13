@@ -1,16 +1,27 @@
+import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mime_flutter/config/constants.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
-import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:vibration/vibration.dart';
 
-class StickersGridView extends ConsumerStatefulWidget {
-  const StickersGridView({super.key, required this.pack});
+typedef StickerInteractCallback = Future<void> Function(
+    bool selected, int index);
 
-  final PackModel pack;
+class StickersGridView extends ConsumerStatefulWidget {
+  const StickersGridView({
+    super.key,
+    required this.stickerPaths,
+    required this.onStickerTap,
+    required this.onStickerLongPress,
+  });
+
+  final List<String> stickerPaths;
+  final StickerInteractCallback onStickerTap;
+  final StickerInteractCallback onStickerLongPress;
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() =>
@@ -18,8 +29,6 @@ class StickersGridView extends ConsumerStatefulWidget {
 }
 
 class _StickersGridViewState extends ConsumerState<StickersGridView> {
-  PackModel get pack => widget.pack;
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(packDetailsNotifierProvider);
@@ -29,32 +38,15 @@ class _StickersGridViewState extends ConsumerState<StickersGridView> {
       crossAxisCount: 4,
       crossAxisSpacing: 6,
       mainAxisSpacing: 6,
-      children: List.generate(pack.assets.length, (index) {
-        final asset = pack.assets[index];
+      children: List.generate(widget.stickerPaths.length, (index) {
+        final path = widget.stickerPaths[index];
         bool selected = state.selectedAssetIds.contains(index);
-        var image = Image.file(asset.file());
+        var image = Image.file(File(path));
 
         var imagePaddingValue = selected ? 14.0 : 0.0;
         return GestureDetector(
-          onLongPress: () {
-            // if already selected, do nothing
-            if (selected) return;
-            if (!state.isSelecting) {
-              if (canVibrate) Vibration.vibrate(duration: 10);
-              ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
-            }
-            ref
-                .read(packDetailsNotifierProvider.notifier)
-                .toggleAssetSelection(index);
-          },
-          onTap: () {
-            // if not in select mode, do nothing
-            if (!state.isSelecting) return;
-            // if already selected, deselect
-            ref
-                .read(packDetailsNotifierProvider.notifier)
-                .toggleAssetSelection(index);
-          },
+          onLongPress: () => widget.onStickerLongPress(selected, index),
+          onTap: () => widget.onStickerTap(selected, index),
           child: Stack(
             fit: StackFit.expand,
             alignment: Alignment.center,
@@ -91,4 +83,3 @@ class _StickersGridViewState extends ConsumerState<StickersGridView> {
     );
   }
 }
-

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mime_flutter/config/constants.dart';
 
 import 'package:mime_flutter/config/detectors.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
@@ -12,11 +13,12 @@ import 'package:mime_flutter/config/mime_icons.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/pages/pack_details/widgets/selected_assets_options_sheet.dart';
-import 'package:mime_flutter/pages/pack_details/widgets/stickers_grid_view.dart';
+import 'package:mime_flutter/widgets/stickers_grid_view.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/errors.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
 import 'package:mime_flutter/widgets/confirmation_dialog.dart';
+import 'package:vibration/vibration.dart';
 
 class PackDetailsPage extends ConsumerStatefulWidget {
   const PackDetailsPage({
@@ -154,13 +156,36 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
                 style: context.textTheme.displaySmall,
               ),
               const Gap(8),
-              StickersGridView(pack: pack),
+              StickersGridView(
+                stickerPaths: pack.assets.map((asset) => asset.path()).toList(),
+                onStickerTap: (selected, index) async {
+                  // if not in select mode, do nothing
+                  if (!state.isSelecting) return;
+                  // if already selected, deselect
+                  ref
+                      .read(packDetailsNotifierProvider.notifier)
+                      .toggleAssetSelection(index);
+                },
+                onStickerLongPress: (selected, index) async {
+                  // if already selected, do nothing
+                  if (selected) return;
+                  if (!state.isSelecting) {
+                    if (canVibrate) Vibration.vibrate(duration: 10);
+                    ref
+                        .read(packDetailsNotifierProvider.notifier)
+                        .toggleSelecting();
+                  }
+                  ref
+                      .read(packDetailsNotifierProvider.notifier)
+                      .toggleAssetSelection(index);
+                },
+              ),
             ],
           ),
         ),
-        floatingActionButton: state.isViewing
+        floatingActionButton: state.isViewing && !state.isImporting
             ? FloatingActionButton(
-                onPressed: state.isImporting ? null : importPressed,
+                onPressed: importPressed,
                 tooltip: "Import",
                 child: const Icon(Icons.download),
               )
@@ -234,7 +259,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
         assets = await importFromFiles();
         break;
       case "whatsapp":
-        await importFromWhatsapp();
+        assets = await importFromWhatsapp();
         break;
       case "discord":
         break;
@@ -293,7 +318,44 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
         result.xFiles.map((image) => convertXfileToAsset(image)));
   }
 
-  Future<void> importFromWhatsapp() async {}
+  Future<List<AssetModel>?> importFromWhatsapp() async {
+    // Show a dialog box to the user
+    // Informing them where they can find the stickers
+    // And then tell them to sort by date descending
+
+    // Once the user has done that, they can press the button to continue
+
+    String message =
+        "You can find WhatsApp stickers in the following path:\n\n $whatsappStickersPath\n\n"
+        "Make sure to sort by date descending to find the latest stickers.";
+
+    final confirmed = await showConfirmationDialog(
+      title: "How to import from WhatsApp",
+      message: message,
+      context: context,
+      icon: Icons.info,
+      confirmText: "Got it",
+    );
+
+    if (!confirmed) return null;
+
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.image,
+      withData: true,
+      allowCompression: false,
+      compressionQuality: 0,
+    );
+
+    if (!mounted) return null;
+    if (result == null) {
+      context.showSnackBar("No files selected");
+      return null;
+    }
+
+    return await Future.wait(
+        result.xFiles.map((image) => convertXfileToAsset(image)));
+  }
 
   Future<AssetModel> convertXfileToAsset(XFile image) async {
     final bytes = await image.readAsBytes();

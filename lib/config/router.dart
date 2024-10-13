@@ -48,7 +48,7 @@ GoRouter router(RouterRef ref) {
             id: state.pathParameters["id"]!,
           );
         },
-      )
+      ),
     ],
   );
 }
