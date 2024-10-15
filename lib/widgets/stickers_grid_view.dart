@@ -3,10 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mime_flutter/config/constants.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
-import 'package:vibration/vibration.dart';
 
 typedef StickerInteractCallback = Future<void> Function(
     bool selected, int index);
