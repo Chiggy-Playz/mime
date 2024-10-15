@@ -57,12 +57,6 @@ class _SelectedAssetsOptionsSheetState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        if (state.selectedAssetIds.length == 1)
-                          LabeledIcon(
-                            iconData: Icons.edit,
-                            label: "Edit \nName",
-                            onTap: () async {},
-                          ),
                         LabeledIcon(
                           iconData: Icons.label,
                           label: "Edit \nTags",
