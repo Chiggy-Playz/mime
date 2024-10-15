@@ -31,6 +31,12 @@ class _DialogWithTextfieldState extends State<DialogWithTextfield> {
   String value = "";
 
   @override
+  void initState() {
+    value = widget.initialValue;
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
       icon: widget.icon != null ? Icon(widget.icon) : null,
@@ -40,7 +46,7 @@ class _DialogWithTextfieldState extends State<DialogWithTextfield> {
         child: TextFormField(
           onChanged: (value) {
             setState(() {
-              this.value = value;
+              this.value = value.trim();
             });
           },
           initialValue: widget.initialValue,

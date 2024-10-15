@@ -7,7 +7,7 @@ part 'asset.mapper.dart';
 
 @MappableClass()
 class AssetModel with AssetModelMappable {
-  static Directory? directory;
+  static late Directory directory;
 
   final String id;
   final String name;
@@ -37,7 +37,7 @@ class AssetModel with AssetModelMappable {
   int get hashCode => id.hashCode;
 
   String path() {
-    return "${directory!.path}/$id.webp";
+    return "${directory.path}/$id.webp";
   }
 
   File file() {

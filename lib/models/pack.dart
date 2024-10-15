@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:mime_flutter/models/asset.dart';
 
@@ -7,8 +9,8 @@ part 'pack.mapper.dart';
 class PackModel with PackModelMappable {
   String name;
   String id;
-  String? assetPath;
   String version;
+  String? iconId;
   List<AssetModel> assets;
 
   PackModel({
@@ -16,11 +18,19 @@ class PackModel with PackModelMappable {
     required this.assets,
     required this.id,
     required this.version,
-    this.assetPath,
+    this.iconId,
   });
 
   static const fromJson = PackModelMapper.fromJson;
 
   int get freeSlots => 30 - assets.length;
   bool get isAnimated => assets.isNotEmpty && assets.first.animated;
+
+  String iconPath() {
+    return "${AssetModel.directory.path}/$iconId.webp";
+  }
+
+  File iconFile() {
+    return File(iconPath());
+  }
 }

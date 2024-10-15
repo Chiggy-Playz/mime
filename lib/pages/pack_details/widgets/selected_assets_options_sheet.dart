@@ -73,6 +73,12 @@ class _SelectedAssetsOptionsSheetState
                           label: "Remove",
                           onTap: removeAssetsPressed,
                         ),
+                        if (state.selectedAssetIds.length == 1)
+                          LabeledIcon(
+                            iconData: Icons.image,
+                            label: "Set as \nPack Icon",
+                            onTap: setPackIcon,
+                          ),
                         LabeledIcon(
                           iconData: Icons.share,
                           label: "Share",
@@ -113,5 +119,15 @@ class _SelectedAssetsOptionsSheetState
         },
       ),
     );
+  }
+
+  Future<void> setPackIcon() async {
+    final asset = pack
+        .assets[ref.read(packDetailsNotifierProvider).selectedAssetIds.first];
+
+    await ref
+        .read(packsNotifierProvider.notifier)
+        .setPackIcon(pack.id, asset.id);
+    ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
   }
 }

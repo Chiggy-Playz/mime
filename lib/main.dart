@@ -17,6 +17,12 @@ import 'package:vibration/vibration.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await configure();
+
+  runApp(const ProviderScope(child: MimeApp()));
+}
+
+Future<void> configure() async {
   // To enable android photo picker for image_picker on Android 12 and lower
   final ImagePickerPlatform imagePickerImplementation =
       ImagePickerPlatform.instance;
@@ -30,8 +36,5 @@ void main() async {
   AssetModel.directory = Directory("${docsDir.path}/assets");
 
   FFmpegKitConfig.setSessionHistorySize(32);
-
   canVibrate = await Vibration.hasVibrator() ?? false;
-
-  runApp(const ProviderScope(child: MimeApp()));
 }

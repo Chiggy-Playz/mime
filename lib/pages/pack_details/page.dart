@@ -1,4 +1,3 @@
-import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,12 +6,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mime_flutter/config/constants.dart';
 
-import 'package:mime_flutter/config/detectors.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/config/mime_icons.dart';
+import 'package:mime_flutter/config/utils.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/pages/pack_details/widgets/selected_assets_options_sheet.dart';
+import 'package:mime_flutter/pages/pack_details/widgets/sticker_pack_header.dart';
 import 'package:mime_flutter/widgets/stickers_grid_view.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/errors.dart';
@@ -61,37 +61,39 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
     List<Widget> actions = [
       IconButton(
-        onPressed: () {},
-        icon: const Icon(Icons.edit),
+        onPressed: ref.read(packDetailsNotifierProvider.notifier).toggleEditing,
+        icon: Icon(state.isEditing ? Icons.check : Icons.edit),
       ),
-      IconButton(
-        onPressed: syncToWhatsapp,
-        icon: const Icon(Icons.sync),
-      ),
-      MenuAnchor(
-        menuChildren: [
-          MenuItemButton(
-            leadingIcon: const Icon(Icons.label),
-            child: const Text("Edit tags"),
-            onPressed: () {},
-          ),
-          MenuItemButton(
-            leadingIcon: const Icon(Icons.delete),
-            onPressed: deletePack,
-            child: const Text("Delete pack"),
-          ),
-        ],
-        builder: (context, controller, child) => IconButton(
-          onPressed: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-          icon: const Icon(Icons.more_vert),
+      if (state.isViewing) ...[
+        IconButton(
+          onPressed: syncToWhatsapp,
+          icon: const Icon(Icons.sync),
         ),
-      )
+        MenuAnchor(
+          menuChildren: [
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.label),
+              child: const Text("Edit tags"),
+              onPressed: () {},
+            ),
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.delete),
+              onPressed: deletePack,
+              child: const Text("Delete pack"),
+            ),
+          ],
+          builder: (context, controller, child) => IconButton(
+            onPressed: () {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            },
+            icon: const Icon(Icons.more_vert),
+          ),
+        )
+      ]
     ];
 
     if (state.isImporting) {
@@ -116,7 +118,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
     }
 
     return PopScope(
-      canPop: !state.isImporting && !state.isSelecting,
+      canPop: state.isViewing && !state.isImporting,
       onPopInvokedWithResult: (didPop, result) {
         // If importing, do not allow pop
         if (state.isImporting) {
@@ -126,6 +128,11 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
         // If selecting, clear selection
         if (state.isSelecting) {
           ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
+        }
+
+        // If editing, cancel editing
+        if (state.isEditing) {
+          ref.read(packDetailsNotifierProvider.notifier).toggleEditing();
         }
       },
       child: Scaffold(
@@ -151,34 +158,38 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
           child: Column(
             children: [
               if (state.isImporting) const LinearProgressIndicator(),
-              Text(
-                pack.name,
-                style: context.textTheme.displaySmall,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: StickerPackHeader(pack: pack),
               ),
               const Gap(8),
-              StickersGridView(
-                stickerPaths: pack.assets.map((asset) => asset.path()).toList(),
-                onStickerTap: (selected, index) async {
-                  // if not in select mode, do nothing
-                  if (!state.isSelecting) return;
-                  // if already selected, deselect
-                  ref
-                      .read(packDetailsNotifierProvider.notifier)
-                      .toggleAssetSelection(index);
-                },
-                onStickerLongPress: (selected, index) async {
-                  // if already selected, do nothing
-                  if (selected) return;
-                  if (!state.isSelecting) {
-                    if (canVibrate) Vibration.vibrate(duration: 10);
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: StickersGridView(
+                  stickerPaths:
+                      pack.assets.map((asset) => asset.path()).toList(),
+                  onStickerTap: (selected, index) async {
+                    // if not in select mode, do nothing
+                    if (!state.isSelecting) return;
+                    // if already selected, deselect
                     ref
                         .read(packDetailsNotifierProvider.notifier)
-                        .toggleSelecting();
-                  }
-                  ref
-                      .read(packDetailsNotifierProvider.notifier)
-                      .toggleAssetSelection(index);
-                },
+                        .toggleAssetSelection(index);
+                  },
+                  onStickerLongPress: (selected, index) async {
+                    // if already selected, do nothing
+                    if (selected) return;
+                    if (!state.isSelecting) {
+                      if (canVibrate) Vibration.vibrate(duration: 10);
+                      ref
+                          .read(packDetailsNotifierProvider.notifier)
+                          .toggleSelecting();
+                    }
+                    ref
+                        .read(packDetailsNotifierProvider.notifier)
+                        .toggleAssetSelection(index);
+                  },
+                ),
               ),
             ],
           ),
@@ -355,20 +366,6 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
     return await Future.wait(
         result.xFiles.map((image) => convertXfileToAsset(image)));
-  }
-
-  Future<AssetModel> convertXfileToAsset(XFile image) async {
-    final bytes = await image.readAsBytes();
-    final hash = md5.convert(bytes).toString();
-    bool animated = isAnimated(bytes);
-
-    return AssetModel(
-      id: hash,
-      name: image.name,
-      tags: {},
-      animated: animated,
-      emojis: ["🫠"],
-    )..bytes = bytes;
   }
 
   Future<void> syncToWhatsapp() async {
