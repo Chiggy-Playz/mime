@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:mime_flutter/pages/asset_details/page.dart';
 import 'package:mime_flutter/pages/home_shell.dart';
 import 'package:mime_flutter/pages/home/view.dart';
 import 'package:mime_flutter/pages/pack_details/page.dart';
@@ -64,6 +65,16 @@ GoRouter router(RouterRef ref) {
 
           return TagEditorPage(
             tags: tags,
+          );
+        },
+      ),
+      GoRoute(
+        path: AssetDetailsPage.routePath,
+        name: AssetDetailsPage.routeName,
+        builder: (context, state) {
+          return AssetDetailsPage(
+            packId: state.pathParameters["packId"]!,
+            assetId: state.pathParameters["assetId"]!,
           );
         },
       ),

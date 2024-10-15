@@ -11,6 +11,7 @@ import 'package:mime_flutter/config/mime_icons.dart';
 import 'package:mime_flutter/config/utils.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
+import 'package:mime_flutter/pages/asset_details/page.dart';
 import 'package:mime_flutter/pages/pack_details/widgets/selected_assets_options_sheet.dart';
 import 'package:mime_flutter/pages/pack_details/widgets/sticker_pack_header.dart';
 import 'package:mime_flutter/widgets/stickers_grid_view.dart';
@@ -170,7 +171,16 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
                       pack.assets.map((asset) => asset.path()).toList(),
                   onStickerTap: (selected, index) async {
                     // if not in select mode, do nothing
-                    if (!state.isSelecting) return;
+                    if (!state.isSelecting) {
+                      context.pushNamed(
+                        AssetDetailsPage.routeName,
+                        pathParameters: {
+                          "packId": pack.id,
+                          "assetId": pack.assets[index].id,
+                        },
+                      );
+                      return;
+                    }
                     // if already selected, deselect
                     ref
                         .read(packDetailsNotifierProvider.notifier)

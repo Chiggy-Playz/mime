@@ -210,8 +210,12 @@ class PacksNotifier extends _$PacksNotifier {
     await save();
   }
 
-  Future<void> updateTags(String packIdentifier, List<String> assetIds,
-      Set<String> tagsToAdd, Set<String> tagsToRemove) async {
+  Future<void> updateAssetTags(
+    String packIdentifier,
+    List<String> assetIds,
+    Set<String> tagsToAdd,
+    Set<String> tagsToRemove,
+  ) async {
     state = AsyncData(
       state.value!.map(
         (pack) {
@@ -223,6 +227,37 @@ class PacksNotifier extends _$PacksNotifier {
 
               return asset.copyWith(
                 tags: asset.tags.difference(tagsToRemove).union(tagsToAdd),
+              );
+            },
+          ).toList();
+
+          return pack.copyWith(
+            assets: updatedAssets,
+            version: pack.version.increment(),
+          );
+        },
+      ).toList(),
+    );
+
+    await save();
+  }
+
+  Future<void> updateAssetName(
+    String packIdentifier,
+    String assetId,
+    String newName,
+  ) async {
+    state = AsyncData(
+      state.value!.map(
+        (pack) {
+          if (pack.id != packIdentifier) return pack;
+
+          final updatedAssets = pack.assets.map(
+            (asset) {
+              if (asset.id != assetId) return asset;
+
+              return asset.copyWith(
+                name: newName,
               );
             },
           ).toList();

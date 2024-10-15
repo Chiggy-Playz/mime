@@ -64,12 +64,22 @@ class _TagEditorPageState extends State<TagEditorPage> {
                 hintText: "Enter tag",
                 labelText: "Tag",
                 validator: (value) {
-                  if (value?.trim().isEmpty ?? true) {
+                  if (value == null || value.trim().isEmpty) {
                     return "Tag cannot be empty";
                   }
 
                   if (tags.contains(value)) {
                     return "Tag already exists";
+                  }
+
+                  // Only alphanumeric characters and spaces
+                  if (!RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
+                    return "Only alphanumeric characters and spaces are allowed";
+                  }
+
+                  // Max 32 characters
+                  if (value.length > 32) {
+                    return "Tag is too long";
                   }
 
                   return null;

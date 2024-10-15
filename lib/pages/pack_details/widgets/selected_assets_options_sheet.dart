@@ -161,7 +161,7 @@ class _SelectedAssetsOptionsSheetState
     final tagsToRemove = commonTags.difference(newTags);
 
     // Update the tags of the selected assets
-    await notifier.updateTags(
+    await notifier.updateAssetTags(
       pack.id,
       selectedAssets.map((asset) => asset.id).toList(),
       tagsToAdd,
