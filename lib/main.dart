@@ -34,6 +34,9 @@ Future<void> configure() async {
   docsDir = await getApplicationDocumentsDirectory();
   tempDir = await getTemporaryDirectory();
   AssetModel.directory = Directory("${docsDir.path}/assets");
+  if (!await AssetModel.directory.exists()) {
+    await AssetModel.directory.create();
+  }
 
   FFmpegKitConfig.setSessionHistorySize(32);
   canVibrate = await Vibration.hasVibrator() ?? false;

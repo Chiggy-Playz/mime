@@ -31,6 +31,7 @@ Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
   final bytes = params['bytes'] as List<int>;
   final assetsDir = params['assetsDir'] as String;
   final tempDir = params['tempDir'] as String;
+  final animated = params['animated'] as bool;
 
   // Initialize FFmpegKit in the isolate
   await FFmpegKitConfig.init();
@@ -48,10 +49,54 @@ Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
   final tempFile = File(tempPath);
   await tempFile.writeAsBytes(bytes);
 
-  // Run ffmpeg to format the asset
-  await FFmpegKit.execute(
-    '-i $tempPath -y -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=#00000000" -vcodec webp -pix_fmt yuva420p $outputPath',
-  );
+  int bitrate = animated ? 800 : 1600; // Start with higher bitrates
+  int duration = 10;
+  final int maxSize = animated ? 500 * 1024 : 100 * 1024;
+  int quality = 90;
+  int fps = 25; // Start with 25 fps for animated files
+
+  int previousSize = 0;
+
+  while (true) {
+    String ffmpegCommand = animated
+        ? '-i $tempPath -y '
+            '-vf "fps=$fps,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=#00000000,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" '
+            '-loop 0 -preset picture -an -vsync 0 -t 00:00:$duration -b:v ${bitrate}k '
+            '-vcodec webp -pix_fmt yuva420p $outputPath'
+        : '-i $tempPath -y -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:-1:-1:color=#00000000" '
+            '-vcodec webp -pix_fmt yuva420p -quality $quality $outputPath';
+
+    await FFmpegKit.execute(ffmpegCommand);
+
+    final int outputSize = await File(outputPath).length();
+
+    if (outputSize <= maxSize) break;
+
+    if (outputSize == previousSize) {
+      // If size hasn't changed for 1 iterations, make a more drastic change
+      bitrate = (bitrate * 0.8).round();
+      quality -= 15;
+      fps = (fps * 0.8).round();
+    }
+
+    previousSize = outputSize;
+
+    if (animated) {
+      if (bitrate > 100) {
+        bitrate = (bitrate * 0.9).round();
+      } else if (fps > 10) {
+        fps--;
+      } else if (duration > 5) {
+        duration--;
+      }
+    } else {
+      if (quality > 50) quality -= 10;
+    }
+
+    if (bitrate < 50 && fps <= 10 && duration <= 5) {
+      break; // Stop if we've reduced parameters too much
+    }
+  }
 
   // Delete the temp file
   await tempFile.delete();
@@ -76,6 +121,7 @@ Future<void> processAssetsInParallel(
       'bytes': asset.bytes,
       'assetsDir': assetsDir.path,
       'tempDir': tempDir.path,
+      'animated': asset.animated,
     };
 
     // Spawn an isolate for each asset processing task
