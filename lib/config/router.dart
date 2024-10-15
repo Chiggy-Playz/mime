@@ -3,6 +3,7 @@ import 'package:mime_flutter/pages/home_shell.dart';
 import 'package:mime_flutter/pages/home/view.dart';
 import 'package:mime_flutter/pages/pack_details/page.dart';
 import 'package:mime_flutter/pages/settings/view.dart';
+import 'package:mime_flutter/pages/tag_editor/page.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'router.g.dart';
@@ -46,6 +47,23 @@ GoRouter router(RouterRef ref) {
         builder: (context, state) {
           return PackDetailsPage(
             id: state.pathParameters["id"]!,
+          );
+        },
+      ),
+      GoRoute(
+        path: TagEditorPage.routePath,
+        name: TagEditorPage.routeName,
+        builder: (context, state) {
+          final rawTags = state.uri.queryParameters["tags"]!;
+          final Set<String> tags;
+          if (rawTags.isEmpty) {
+            tags = {};
+          } else {
+            tags = rawTags.split(",").toSet();
+          }
+
+          return TagEditorPage(
+            tags: tags,
           );
         },
       ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mime_flutter/models/pack.dart';
+import 'package:mime_flutter/pages/tag_editor/page.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
 import 'package:mime_flutter/widgets/labeled_icon.dart';
@@ -57,10 +59,11 @@ class _SelectedAssetsOptionsSheetState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.max,
                       children: [
+                        // if (state.selectedAssetIds.length != 1)
                         LabeledIcon(
                           iconData: Icons.label,
                           label: "Edit \nTags",
-                          onTap: () async {},
+                          onTap: editTagsPressed,
                         ),
                         LabeledIcon(
                           iconData: Icons.delete,
@@ -123,5 +126,46 @@ class _SelectedAssetsOptionsSheetState
         .read(packsNotifierProvider.notifier)
         .setPackIcon(pack.id, asset.id);
     ref.read(packDetailsNotifierProvider.notifier).toggleSelecting();
+  }
+
+  Future<void> editTagsPressed() async {
+    final notifier = ref.read(packsNotifierProvider.notifier);
+
+    // First, find all the common tags of the selected assets
+    final selectedAssets = ref
+        .read(packDetailsNotifierProvider)
+        .selectedAssetIds
+        .map((index) => pack.assets[index])
+        .toList();
+
+    // Fold the tags of the selected assets to find the common tags
+    final commonTags = selectedAssets.fold<Set<String>>(
+      selectedAssets.first.tags,
+      (commonTags, asset) {
+        return commonTags.intersection(asset.tags);
+      },
+    );
+
+    // Then, open the tag editor with the common tags
+    final newTags = await context.pushNamed<Set<String>>(
+      TagEditorPage.routeName,
+      queryParameters: {
+        "tags": commonTags.join(","),
+      },
+    );
+
+    if (newTags == null) return;
+
+    // Figure out which tags to add and remove
+    final tagsToAdd = newTags.difference(commonTags);
+    final tagsToRemove = commonTags.difference(newTags);
+
+    // Update the tags of the selected assets
+    await notifier.updateTags(
+      pack.id,
+      selectedAssets.map((asset) => asset.id).toList(),
+      tagsToAdd,
+      tagsToRemove,
+    );
   }
 }

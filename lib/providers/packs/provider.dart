@@ -209,4 +209,32 @@ class PacksNotifier extends _$PacksNotifier {
 
     await save();
   }
+
+  Future<void> updateTags(String packIdentifier, List<String> assetIds,
+      Set<String> tagsToAdd, Set<String> tagsToRemove) async {
+    state = AsyncData(
+      state.value!.map(
+        (pack) {
+          if (pack.id != packIdentifier) return pack;
+
+          final updatedAssets = pack.assets.map(
+            (asset) {
+              if (!assetIds.contains(asset.id)) return asset;
+
+              return asset.copyWith(
+                tags: asset.tags.difference(tagsToRemove).union(tagsToAdd),
+              );
+            },
+          ).toList();
+
+          return pack.copyWith(
+            assets: updatedAssets,
+            version: pack.version.increment(),
+          );
+        },
+      ).toList(),
+    );
+
+    await save();
+  }
 }
