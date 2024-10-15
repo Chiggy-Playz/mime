@@ -21,56 +21,62 @@ class _StickerPackListViewState extends ConsumerState<StickerPackListView> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () async {},
-      child: packs.isEmpty
-          ? const InfoFillerWidget(
-              icon: Icons.image_not_supported,
-              title: "No packs yet",
-              subtitle: "Get started by creating a new pack!",
-            )
-          : ListView.builder(
-              primary: false,
-              physics: const AlwaysScrollableScrollPhysics(),
-              key: UniqueKey(),
-              itemCount: packs.length,
-              itemBuilder: (context, index) {
-                final pack = packs[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    elevation: 8,
-                    child: InkWell(
-                      onTap: () {
-                        context.pushNamed(
-                          PackDetailsPage.routeName,
-                          pathParameters: {"id": pack.id},
-                        );
-                      },
-                      child: Column(
-                        children: [
-                          ListTile(
-                            title: Text(
-                              pack.name,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            subtitle: Text("${pack.assets.length} stickers"),
+    return packs.isEmpty
+        ? const InfoFillerWidget(
+            icon: Icons.image_not_supported,
+            title: "No packs yet",
+            subtitle: "Get started by creating a new pack!",
+          )
+        : ListView.builder(
+            primary: false,
+            physics: const AlwaysScrollableScrollPhysics(),
+            key: UniqueKey(),
+            itemCount: packs.length,
+            itemBuilder: (context, index) {
+              final pack = packs[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  elevation: 8,
+                  child: InkWell(
+                    onTap: () {
+                      context.pushNamed(
+                        PackDetailsPage.routeName,
+                        pathParameters: {"id": pack.id},
+                      );
+                    },
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: Image(
+                            image: pack.iconId == null
+                                ? const AssetImage(
+                                    "assets/icons/icon.png",
+                                  )
+                                : FileImage(pack.iconFile()),
+                            width: 48,
+                            height: 48,
                           ),
-                          if (pack.assets.isNotEmpty)
-                            StickerPackPreview(
-                              pack: pack,
-                            ),
-                        ],
-                      ),
+                          title: Text(
+                            pack.name,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          subtitle: Text("${pack.assets.length} stickers"),
+                        ),
+                        if (pack.assets.isNotEmpty)
+                          StickerPackPreview(
+                            pack: pack,
+                          ),
+                      ],
                     ),
                   ),
-                );
-              },
-            ),
-    );
+                ),
+              );
+            },
+          );
   }
 }

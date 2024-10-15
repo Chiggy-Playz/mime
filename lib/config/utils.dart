@@ -28,7 +28,7 @@ Future<AssetModel> convertXfileToAsset(XFile image) async {
 Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
   final SendPort sendPort = params['sendPort'] as SendPort;
   final assetId = params['assetId'] as String;
-  final bytes = params['bytes'] as List<int>?;
+  final bytes = params['bytes'] as List<int>;
   final assetsDir = params['assetsDir'] as String;
   final tempDir = params['tempDir'] as String;
 
@@ -46,7 +46,7 @@ Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
 
   // Write the bytes to temp file
   final tempFile = File(tempPath);
-  await tempFile.writeAsBytes(bytes!);
+  await tempFile.writeAsBytes(bytes);
 
   // Run ffmpeg to format the asset
   await FFmpegKit.execute(
