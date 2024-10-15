@@ -77,10 +77,18 @@ class PacksNotifier extends _$PacksNotifier {
 
     final dir = await getApplicationDocumentsDirectory();
 
+    final Uint8List bytes;
     // Prepare tray icon
-    final trayIconImage = await rootBundle.load('assets/icons/icon.png');
+    if (pack.iconId == null) {
+      final trayIconImage = await rootBundle.load('assets/icons/icon.png');
+      bytes = trayIconImage.buffer.asUint8List();
+    } else {
+      final trayIconImage = pack.iconFile();
+      bytes = await trayIconImage.readAsBytes();
+    }
+
     final trayIconBytes = await resizeImage(
-      Uint8List.view(trayIconImage.buffer),
+      bytes,
       width: 96,
       height: 96,
     );
@@ -173,7 +181,7 @@ class PacksNotifier extends _$PacksNotifier {
     await save();
   }
 
-  Future<void> setPackIcon(String packIdentifier, String iconId) async {
+  Future<void> setPackIcon(String packIdentifier, String? iconId) async {
     state = AsyncData(
       state.value!.map(
         (pack) {

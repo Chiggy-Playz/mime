@@ -42,6 +42,7 @@ class _StickerPackHeaderState extends ConsumerState<StickerPackHeader> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Stack(
+          clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
             if (isEditing)
@@ -53,22 +54,34 @@ class _StickerPackHeaderState extends ConsumerState<StickerPackHeader> {
               duration: const Duration(milliseconds: 150),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(isEditing ? 12 : 0),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: isEditing ? editIconClicked : null,
-                  child: image,
+                child: Container(
+                  decoration: isEditing
+                      ? BoxDecoration(
+                          border: Border.all(
+                            color: context.colorScheme.onSurface,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        )
+                      : null,
+                  padding: const EdgeInsets.all(4.0),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: isEditing ? editIconClicked : null,
+                    child: image,
+                  ),
                 ),
               ),
             ),
-            if (isEditing)
+            if (isEditing && pack.iconId != null)
               Positioned(
-                bottom: 0,
-                right: 0,
+                bottom: -15,
+                right: -10,
                 child: Padding(
                   padding: const EdgeInsets.all(2.0),
                   child: IconButton.filled(
-                    onPressed: editIconClicked,
-                    icon: const Icon(Icons.edit),
+                    onPressed: deleteIconClicked,
+                    icon: const Icon(Icons.delete),
                   ),
                 ),
               ),
@@ -95,6 +108,12 @@ class _StickerPackHeaderState extends ConsumerState<StickerPackHeader> {
         ),
       ],
     );
+  }
+
+  Future<void> deleteIconClicked() async {
+    if (pack.iconId == null) return;
+
+    await ref.read(packsNotifierProvider.notifier).setPackIcon(pack.id, null);
   }
 
   Future<void> editIconClicked() async {
