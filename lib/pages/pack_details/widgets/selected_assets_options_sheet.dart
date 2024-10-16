@@ -124,6 +124,11 @@ class _SelectedAssetsOptionsSheetState
     final asset = pack
         .assets[ref.read(packDetailsNotifierProvider).selectedAssetIds.first];
 
+    if (asset.animated) {
+      context.showSnackBar("Animated images are not supported");
+      return;
+    }
+
     await ref
         .read(packsNotifierProvider.notifier)
         .setPackIcon(pack.id, asset.id);
