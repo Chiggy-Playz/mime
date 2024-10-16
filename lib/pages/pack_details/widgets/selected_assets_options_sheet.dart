@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import 'package:mime_flutter/pages/tag_editor/page.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
 import 'package:mime_flutter/widgets/labeled_icon.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SelectedAssetsOptionsSheet extends ConsumerStatefulWidget {
   const SelectedAssetsOptionsSheet({super.key, required this.pack});
@@ -74,12 +76,12 @@ class _SelectedAssetsOptionsSheetState
                           LabeledIcon(
                             iconData: Icons.image,
                             label: "Set as \nPack Icon",
-                            onTap: setPackIcon,
+                            onTap: setPackIconPressed,
                           ),
                         LabeledIcon(
                           iconData: Icons.share,
                           label: "Share",
-                          onTap: () async {},
+                          onTap: sharePressed,
                         ),
                       ],
                     ),
@@ -118,7 +120,7 @@ class _SelectedAssetsOptionsSheetState
     );
   }
 
-  Future<void> setPackIcon() async {
+  Future<void> setPackIconPressed() async {
     final asset = pack
         .assets[ref.read(packDetailsNotifierProvider).selectedAssetIds.first];
 
@@ -167,5 +169,16 @@ class _SelectedAssetsOptionsSheetState
       tagsToAdd,
       tagsToRemove,
     );
+  }
+
+  Future<void> sharePressed() async {
+    final selectedAssets = ref
+        .read(packDetailsNotifierProvider)
+        .selectedAssetIds
+        .map((index) => pack.assets[index])
+        .toList();
+
+    await Share.shareXFiles(
+        selectedAssets.map((asset) => asset.xFile()).toList());
   }
 }

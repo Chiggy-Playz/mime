@@ -272,4 +272,34 @@ class PacksNotifier extends _$PacksNotifier {
 
     await save();
   }
+
+  Future<void> importPack(PackModel pack, Directory destinationDir) async {
+    await Future.wait(
+      pack.assets.map(
+        (asset) async {
+          final source = File("${destinationDir.path}/${asset.id}.webp");
+          final destination =
+              File("${AssetModel.directory.path}/${asset.id}.webp");
+
+          await source.copy(destination.path);
+        },
+      ),
+    );
+
+    // Copy the icon to the asset directory
+    if (pack.iconId != null) {
+      final source = File("${destinationDir.path}/${pack.iconId}.webp");
+      final destination =
+          File("${AssetModel.directory.path}/${pack.iconId}.webp");
+
+      await source.copy(destination.path);
+    }
+
+    state = AsyncData(
+      [
+        ...state.value!,
+        pack,
+      ],
+    );
+  }
 }

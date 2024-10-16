@@ -1,6 +1,13 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_archive/flutter_archive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mime_flutter/config/constants.dart';
+import 'package:mime_flutter/config/extensions/extensions.dart';
+import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
 import 'package:mime_flutter/widgets/dialog_with_textfield.dart';
 
@@ -21,6 +28,13 @@ class HomeShell extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(destinations[navigationShell.currentIndex].label),
+        actions: [
+          if (navigationShell.currentIndex == 0)
+            IconButton(
+              onPressed: () async => await importPackPressed(context, ref),
+              icon: const Icon(Icons.download),
+            ),
+        ],
       ),
       body: navigationShell,
       floatingActionButton: navigationShell.currentIndex == 0
@@ -60,5 +74,54 @@ class HomeShell extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> importPackPressed(BuildContext context, WidgetRef ref) async {
+    // Choose the zip file from file picker
+
+    FilePickerResult? file = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      allowedExtensions: ['zip'],
+      type: FileType.custom,
+      dialogTitle: "Select a sticker pack zip file",
+    );
+
+    if (file == null) return;
+
+    final path = file.files.single.path!;
+
+    final zipFile = File(path);
+    final destinationDir = await tempDir.createTemp();
+
+    await ZipFile.extractToDirectory(
+        zipFile: zipFile, destinationDir: destinationDir);
+
+    // Validate that the destination directory contains a pack.json file and only webp files
+    try {
+      final packFile = File("${destinationDir.path}/pack.json");
+      if (!await packFile.exists()) {
+        throw Exception("Invalid pack file");
+      }
+
+      final packJson = await packFile.readAsString();
+      final pack = PackModel.fromJsonString(packJson);
+
+      final webpFiles = await destinationDir.list().toList();
+      if (webpFiles.any((file) =>
+          !file.path.endsWith(".webp") && !file.path.endsWith("pack.json"))) {
+        throw Exception("Invalid pack file");
+      }
+
+      await ref
+          .read(packsNotifierProvider.notifier)
+          .importPack(pack, destinationDir);
+    } on Exception {
+      if (!context.mounted) return;
+      context.showSnackBar("Invalid pack file");
+      return;
+    }
+
+    if (!context.mounted) return;
+    context.showSnackBar("Pack imported successfully");
   }
 }

@@ -146,3 +146,4 @@ Future<void> processAssetsInParallel(
   // Close the ReceivePort
   receivePort.close();
 }
+

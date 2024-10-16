@@ -19,6 +19,7 @@ import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/providers/packs/errors.dart';
 import 'package:mime_flutter/providers/packs/provider.dart';
 import 'package:mime_flutter/widgets/confirmation_dialog.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:vibration/vibration.dart';
 
 class PackDetailsPage extends ConsumerStatefulWidget {
@@ -75,7 +76,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
             MenuItemButton(
               leadingIcon: const Icon(Icons.share),
               child: const Text("Share"),
-              onPressed: () {},
+              onPressed: sharePackPressed,
             ),
             MenuItemButton(
               leadingIcon: const Icon(Icons.delete),
@@ -402,5 +403,11 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
     context.pop();
     await ref.read(packsNotifierProvider.notifier).deletePack(pack.id);
+  }
+
+  Future<void> sharePackPressed() async {
+    final zipFile = await pack.zip();
+
+    await Share.shareXFiles([XFile(zipFile.path)], text: pack.name);
   }
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:image_picker/image_picker.dart';
 
 part 'asset.mapper.dart';
 
@@ -43,4 +44,9 @@ class AssetModel with AssetModelMappable {
   File file() {
     return File(path());
   }
+
+  XFile xFile() {
+    return XFile(path());
+  }
+
 }
