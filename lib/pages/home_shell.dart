@@ -115,7 +115,10 @@ class HomeShell extends ConsumerWidget {
       await ref
           .read(packsNotifierProvider.notifier)
           .importPack(pack, destinationDir);
-    } on Exception {
+    } on Exception catch (error) {
+      if (error.toString() != "Invalid pack file") {
+        rethrow;
+      }
       if (!context.mounted) return;
       context.showSnackBar("Invalid pack file");
       return;

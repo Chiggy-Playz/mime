@@ -75,8 +75,8 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
           menuChildren: [
             MenuItemButton(
               leadingIcon: const Icon(Icons.share),
-              child: const Text("Share"),
               onPressed: sharePackPressed,
+              child: const Text("Share"),
             ),
             MenuItemButton(
               leadingIcon: const Icon(Icons.delete),

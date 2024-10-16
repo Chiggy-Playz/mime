@@ -10,7 +10,9 @@ import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/config/utils.dart';
 import 'package:mime_flutter/models/asset.dart';
 import 'package:mime_flutter/models/pack.dart';
+import 'package:mime_flutter/models/settings.dart';
 import 'package:mime_flutter/providers/packs/errors.dart';
+import 'package:mime_flutter/providers/settings/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,11 +25,13 @@ part 'provider.g.dart';
 @Riverpod()
 class PacksNotifier extends _$PacksNotifier {
   SharedPreferences? prefs;
+  SettingsModel? settings;
   Uuid uuid = const Uuid();
 
   @override
   Future<List<PackModel>> build() async {
     prefs ??= await SharedPreferences.getInstance();
+    settings = ref.watch(settingsNotifierProvider).valueOrNull;
 
     final packsJson = prefs!.getString("packs");
 
@@ -42,6 +46,76 @@ class PacksNotifier extends _$PacksNotifier {
   Future<void> save() async {
     final packs = state.value!.map((e) => e.toJson()).toList();
     await prefs!.setString("packs", jsonEncode(packs));
+
+    // Write the packs to the external storage
+    await saveToExternalStorage();
+  }
+
+  Future<void> saveToExternalStorage() async {
+    // final l = [
+    //   await getApplicationDocumentsDirectory(),
+    //   await getApplicationCacheDirectory(),
+    //   await getApplicationSupportDirectory(),
+    //   await getDownloadsDirectory(),
+    //   await getExternalCacheDirectories(),
+    //   await getExternalStorageDirectories(),
+    //   await getExternalStorageDirectory(),
+    //   // await getLibraryDirectory(),
+    //   await getTemporaryDirectory(),
+    // ];
+
+    if (settings == null || !settings!.storeStickersExternally) return;
+
+    // return;
+
+    final extDir = SettingsModel.externalStickersDirectory;
+    final packIds = state.value!.map((e) => e.id).toSet();
+
+    // Add the packs to the external storage
+    for (final pack in state.value!) {
+      // Check if pack folder is created
+      final packDir = Directory("${extDir.path}/${pack.id}");
+      if (!await packDir.exists()) {
+        await packDir.create();
+      }
+
+      for (final asset in pack.assets) {
+        // Copy the assets to the pack folder
+        final source = File("${AssetModel.directory.path}/${asset.id}.webp");
+        final destination = File(
+            "${packDir.path}/${asset.id}-${asset.name}-${asset.tags.join('-')}-${pack.name}.webp");
+        if (!await destination.exists()) {
+          await destination.writeAsBytes(
+            await source.readAsBytes(),
+            flush: true,
+          );
+        }
+      }
+
+      // Remove any assets that are not in the state
+      final extPackAssets = await packDir.list().toSet();
+      final assetIds = pack.assets.map((e) => e.id).toList();
+      for (final extPackAsset in extPackAssets) {
+        final assetId = extPackAsset.path
+            .split("/")
+            .last
+            .split("-")
+            .first
+            .replaceAll(".webp", "");
+        if (!assetIds.contains(assetId)) {
+          await extPackAsset.delete();
+        }
+      }
+    }
+
+    // Remove any packs that are not in the state
+    final extPacks = await extDir.list().toList();
+    for (final extPack in extPacks) {
+      final packId = extPack.path.split("/").last;
+      if (!packIds.contains(packId)) {
+        await extPack.delete(recursive: true);
+      }
+    }
   }
 
   Future<void> createPack(String name) async {
@@ -188,7 +262,9 @@ class PacksNotifier extends _$PacksNotifier {
           if (pack.id != packIdentifier) return pack;
 
           return pack.copyWith(
-              iconid: iconId, version: pack.version.increment());
+            iconId: iconId,
+            version: pack.version.increment(),
+          );
         },
       ).toList(),
     );
@@ -301,5 +377,7 @@ class PacksNotifier extends _$PacksNotifier {
         pack,
       ],
     );
+
+    await save();
   }
 }
