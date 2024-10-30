@@ -52,23 +52,11 @@ class PacksNotifier extends _$PacksNotifier {
   }
 
   Future<void> saveToExternalStorage() async {
-    // final l = [
-    //   await getApplicationDocumentsDirectory(),
-    //   await getApplicationCacheDirectory(),
-    //   await getApplicationSupportDirectory(),
-    //   await getDownloadsDirectory(),
-    //   await getExternalCacheDirectories(),
-    //   await getExternalStorageDirectories(),
-    //   await getExternalStorageDirectory(),
-    //   // await getLibraryDirectory(),
-    //   await getTemporaryDirectory(),
-    // ];
+    if (settings == null || settings!.externalStickersStoragePath == null) {
+      return;
+    }
 
-    if (settings == null || !settings!.storeStickersExternally) return;
-
-    // return;
-
-    final extDir = SettingsModel.externalStickersDirectory;
+    final extDir = settings!.externalStickersDirectory;
     final packIds = state.value!.map((e) => e.id).toSet();
 
     // Add the packs to the external storage

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mime_flutter/models/settings.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,9 +20,6 @@ class SettingsNotifier extends _$SettingsNotifier {
       settings = SettingsModel.fromJsonString(settingsJson);
     }
 
-    SettingsModel.externalStickersDirectory =
-        (await getExternalStorageDirectory())!;
-
     return settings;
   }
 
@@ -36,10 +32,8 @@ class SettingsNotifier extends _$SettingsNotifier {
     await save();
   }
 
-  Future<void> setStoreStickersExternally(bool storeStickersExternally) async {
-    state = AsyncData(state.value!
-        .copyWith(storeStickersExternally: storeStickersExternally));
-
+  Future<void> setExternalStickersPath(String? path) async {
+    state = AsyncData(state.value!.copyWith(externalStickersStoragePath: path));
     await save();
   }
 }

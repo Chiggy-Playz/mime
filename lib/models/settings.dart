@@ -22,13 +22,14 @@ class ThemeModeMapper extends SimpleMapper<ThemeMode> {
 @MappableClass(includeCustomMappers: [ThemeModeMapper()])
 class SettingsModel with SettingsModelMappable {
   final ThemeMode themeMode;
-  final bool storeStickersExternally;
-  static late Directory externalStickersDirectory;
+  final String? externalStickersStoragePath;
 
   SettingsModel([
     this.themeMode = ThemeMode.system,
-    this.storeStickersExternally = false,
+    this.externalStickersStoragePath,
   ]);
+
+  Directory get externalStickersDirectory => Directory(externalStickersStoragePath ?? '');
 
   static const fromJson = SettingsModelMapper.fromJson;
   static const fromJsonString = SettingsModelMapper.fromJsonString;

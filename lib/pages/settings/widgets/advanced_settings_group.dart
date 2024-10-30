@@ -1,8 +1,13 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/models/settings.dart';
 import 'package:mime_flutter/pages/settings/widgets/settings_group_widget.dart';
 import 'package:mime_flutter/providers/settings/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AdvancedSettingsGroup extends ConsumerStatefulWidget {
   const AdvancedSettingsGroup({super.key, required this.settings});
@@ -22,40 +27,82 @@ class _AdvancedSettingsGroupState extends ConsumerState<AdvancedSettingsGroup> {
     return SettingsGroupWidget(
       title: 'Advanced',
       children: [
-        SwitchListTile(
-          value: settings.storeStickersExternally,
+        ListTile(
           title: const Text("External Sticker Directory"),
-          subtitle: Text(SettingsModel.externalStickersDirectory.path),
-          secondary: const Icon(Icons.folder_rounded),
-          onChanged: (value) {
-            ref.read(settingsNotifierProvider.notifier).setStoreStickersExternally(value);
-          },
-        ),
+          subtitle: Text(settings.externalStickersStoragePath ?? "Not set"),
+          leading: const Icon(Icons.folder_rounded),
+          trailing: settings.externalStickersStoragePath == null
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.cancel),
+                  onPressed: () {
+                    ref
+                        .read(settingsNotifierProvider.notifier)
+                        .setExternalStickersPath(null);
+                  },
+                ),
+          onTap: setExternalStickersPath,
+        )
       ],
     );
   }
 
-  // Future<void> setExternalStickersPath() async {
-  //   // Choose directory
-  //   final result = await FilePicker.platform.getDirectoryPath(
-  //     dialogTitle: "Select a directory to store your stickers",
-  //   );
+  Future<void> setExternalStickersPath() async {
+    final manageExternalStoragePerm =
+        await Permission.manageExternalStorage.request();
 
-  //   if (!mounted) return;
+    if (!mounted) return;
+    if (manageExternalStoragePerm != PermissionStatus.granted) {
+      context.showErrorSnackBar(
+        "Permission denied",
+        action: SnackBarAction(
+          label: "Info",
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: const Text("Permission Info"),
+                  content: const Text(
+                    "This permission is required to access the external storage to store your stickers. Only the directory you choose will be used to store your stickers.",
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text("Close"),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      );
+      return;
+    }
 
-  //   if (result == null) {
-  //     context.showErrorSnackBar("No directory selected");
-  //     return;
-  //   }
+    // Choose directory
+    final result = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: "Select a directory to store your stickers",
+    );
 
-  //   Directory externalDir = Directory(result);
+    if (!mounted) return;
 
-  //   if (await externalDir.list().length > 0) {
-  //     if (!mounted) return;
-  //     context.showErrorSnackBar("Directory is not empty");
-  //     return;
-  //   }
+    if (result == null) {
+      context.showErrorSnackBar("No directory selected");
+      return;
+    }
 
-  //   ref.read(settingsNotifierProvider.notifier).setExternalStickersPath(result);
-  // }
+    Directory externalDir = Directory(result);
+
+    if (await externalDir.list().length > 0) {
+      if (!mounted) return;
+      context.showErrorSnackBar("Directory is not empty");
+      return;
+    }
+
+    ref.read(settingsNotifierProvider.notifier).setExternalStickersPath(result);
+  }
 }
