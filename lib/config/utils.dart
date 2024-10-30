@@ -16,7 +16,7 @@ Future<AssetModel> convertXfileToAsset(XFile image) async {
 
   return AssetModel(
     id: hash,
-    name: image.name,
+    name: image.name.substring(0, image.name.lastIndexOf('.')),
     tags: {},
     animated: animated,
     emojis: ["🫠"],
@@ -146,4 +146,3 @@ Future<void> processAssetsInParallel(
   // Close the ReceivePort
   receivePort.close();
 }
-
