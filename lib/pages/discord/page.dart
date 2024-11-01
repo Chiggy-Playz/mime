@@ -33,6 +33,17 @@ class DiscordAssetsPageState extends ConsumerState<DiscordAssetsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discord Assets'),
+        actions: [
+          if (supabase.auth.currentUser != null)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                await supabase.auth.signOut();
+                if (!mounted) return;
+                setState(() {});
+              },
+            ),
+        ],
       ),
       body: supabase.auth.currentUser == null
           ? const DiscordLoginView()
