@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:mime_flutter/pages/asset_details/page.dart';
+import 'package:mime_flutter/pages/discord/page.dart';
 import 'package:mime_flutter/pages/home_shell.dart';
 import 'package:mime_flutter/pages/home/view.dart';
 import 'package:mime_flutter/pages/pack_details/page.dart';
@@ -76,6 +77,13 @@ GoRouter router(RouterRef ref) {
             packId: state.pathParameters["packId"]!,
             assetId: state.pathParameters["assetId"]!,
           );
+        },
+      ),
+      GoRoute(
+        path: DiscordAssetsPage.routePath,
+        name: DiscordAssetsPage.routeName,
+        builder: (context, state) {
+          return const DiscordAssetsPage();
         },
       ),
     ],

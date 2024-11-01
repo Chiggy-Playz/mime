@@ -11,6 +11,9 @@ import 'package:mime_flutter/models/asset.dart';
 
 Future<AssetModel> convertXfileToAsset(XFile image) async {
   final bytes = await image.readAsBytes();
+  if (bytes.isEmpty) {
+    throw Exception("Empty file");
+  }
   final hash = md5.convert(bytes).toString();
   bool animated = isAnimated(bytes);
 
@@ -67,6 +70,11 @@ Future<void> _processAssetInIsolate(Map<String, dynamic> params) async {
             '-vcodec webp -pix_fmt yuva420p -quality $quality $outputPath';
 
     await FFmpegKit.execute(ffmpegCommand);
+
+    if (!await File(outputPath).exists() ||
+        await File(outputPath).length() == 0) {
+      continue;
+    }
 
     final int outputSize = await File(outputPath).length();
 

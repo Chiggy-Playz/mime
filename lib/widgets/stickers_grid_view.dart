@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,12 +11,12 @@ typedef StickerInteractCallback = Future<void> Function(
 class StickersGridView extends ConsumerStatefulWidget {
   const StickersGridView({
     super.key,
-    required this.stickerPaths,
+    required this.imageProviders,
     required this.onStickerTap,
     required this.onStickerLongPress,
   });
 
-  final List<String> stickerPaths;
+  final List<ImageProvider> imageProviders;
   final StickerInteractCallback onStickerTap;
   final StickerInteractCallback onStickerLongPress;
 
@@ -36,10 +35,12 @@ class _StickersGridViewState extends ConsumerState<StickersGridView> {
       crossAxisCount: 4,
       crossAxisSpacing: 6,
       mainAxisSpacing: 6,
-      children: List.generate(widget.stickerPaths.length, (index) {
-        final path = widget.stickerPaths[index];
+      children: List.generate(widget.imageProviders.length, (index) {
+        final imageProvider = widget.imageProviders[index];
         bool selected = state.selectedAssetIds.contains(index);
-        var image = Image.file(File(path));
+        var image = Image(
+          image: imageProvider,
+        );
 
         var imagePaddingValue = selected ? 14.0 : 0.0;
         return GestureDetector(

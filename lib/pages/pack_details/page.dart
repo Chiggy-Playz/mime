@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +12,10 @@ import 'package:mime_flutter/config/extensions/extensions.dart';
 import 'package:mime_flutter/config/mime_icons.dart';
 import 'package:mime_flutter/config/utils.dart';
 import 'package:mime_flutter/models/asset.dart';
+import 'package:mime_flutter/models/discord_asset.dart';
 import 'package:mime_flutter/models/pack.dart';
 import 'package:mime_flutter/pages/asset_details/page.dart';
+import 'package:mime_flutter/pages/discord/page.dart';
 import 'package:mime_flutter/pages/pack_details/widgets/selected_assets_options_sheet.dart';
 import 'package:mime_flutter/pages/pack_details/widgets/sticker_pack_header.dart';
 import 'package:mime_flutter/widgets/stickers_grid_view.dart';
@@ -168,8 +172,9 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: StickersGridView(
-                  stickerPaths:
-                      pack.assets.map((asset) => asset.path()).toList(),
+                  imageProviders: pack.assets
+                      .map((asset) => FileImage(File(asset.path())))
+                      .toList(),
                   onStickerTap: (selected, index) async {
                     // if not in select mode, do nothing
                     if (!state.isSelecting) {
@@ -209,6 +214,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
             ? FloatingActionButton(
                 onPressed: importPressed,
                 tooltip: "Import",
+                heroTag: null,
                 child: const Icon(Icons.download),
               )
             : null,
@@ -223,6 +229,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
     // 1. Import from gallery
     // 2. Import from whatsapp
     // 3. Import from files
+    // 4. Import from discord
 
     // When user selects one of the options, close the modal sheet
     // and show a snackbar with the message "Importing from <option>"
@@ -284,6 +291,7 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
         assets = await importFromWhatsapp();
         break;
       case "discord":
+        assets = await importFromDiscord();
         break;
       default:
         throw UnimplementedError("Unknown option: $option");
@@ -377,6 +385,32 @@ class PackDetailsPageState extends ConsumerState<PackDetailsPage> {
 
     return await Future.wait(
         result.xFiles.map((image) => convertXfileToAsset(image)));
+  }
+
+  Future<List<AssetModel>?> importFromDiscord() async {
+    final discordAssets = await context
+        .push<List<DiscordAssetModel>>(DiscordAssetsPage.routePath);
+
+    if (!mounted) return null;
+    if (discordAssets == null || discordAssets.isEmpty) {
+      context.showSnackBar("No assets selected");
+      return null;
+    }
+
+    // Convert discord assets to xfiles and then to assets
+    return await Future.wait(discordAssets.map((asset) async {
+      final path = "${tempDir.path}/${asset.fileName}";
+
+      if (await File(path).exists()) {
+        return convertXfileToAsset(XFile(path, name: asset.name));
+      } else {
+        await File(path).create();
+      }
+
+      // Download the asset to temp file
+      await dio.download(asset.url, path);
+      return await convertXfileToAsset(XFile(path, name: asset.name));
+    }));
   }
 
   Future<void> syncToWhatsapp() async {
