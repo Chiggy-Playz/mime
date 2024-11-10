@@ -7,6 +7,7 @@ import 'package:mime_flutter/pages/discord/login_view.dart';
 import 'package:mime_flutter/providers/pack_details/provider.dart';
 import 'package:mime_flutter/widgets/stickers_grid_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vibration/vibration.dart';
 
 final supabase = Supabase.instance.client;
@@ -34,6 +35,11 @@ class DiscordAssetsPageState extends ConsumerState<DiscordAssetsPage> {
       appBar: AppBar(
         title: const Text('Discord Assets'),
         actions: [
+          IconButton(
+              onPressed: () async {
+                launchUrl(Uri.parse(mimeBotInviteUrl));
+              },
+              icon: const Icon(Icons.smart_toy)),
           if (supabase.auth.currentUser != null)
             IconButton(
               icon: const Icon(Icons.logout),
