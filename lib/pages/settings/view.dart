@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mime_flutter/pages/settings/widgets/advanced_settings_group.dart';
+import 'package:mime_flutter/pages/settings/widgets/backup_settings_group.dart';
 import 'package:mime_flutter/pages/settings/widgets/theme_settings_group.dart';
 import 'package:mime_flutter/providers/settings/provider.dart';
 
@@ -30,6 +31,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         return ListView(
           children: [
             ThemeSettingsGroup(settings: settings),
+            BackupSettingsGroup(settings: settings),
             AdvancedSettingsGroup(settings: settings),
           ],
         );

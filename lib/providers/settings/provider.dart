@@ -36,4 +36,9 @@ class SettingsNotifier extends _$SettingsNotifier {
     state = AsyncData(state.value!.copyWith(externalStickersStoragePath: path));
     await save();
   }
+
+  Future<void> restoreSettings(SettingsModel settings) async {
+    state = AsyncData(settings);
+    await save();
+  }
 }

@@ -82,7 +82,7 @@ class _AdvancedSettingsGroupState extends ConsumerState<AdvancedSettingsGroup> {
       );
       return;
     }
-
+ 
     // Choose directory
     final result = await FilePicker.platform.getDirectoryPath(
       dialogTitle: "Select a directory to store your stickers",

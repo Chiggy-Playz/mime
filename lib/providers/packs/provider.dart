@@ -165,7 +165,7 @@ class PacksNotifier extends _$PacksNotifier {
       await whatsappStickersHandler.addStickerPack(
         pack.id,
         pack.name,
-        "Chiggy",
+        "Mime",
         "file://${trayIcon.path}",
         "",
         "",
@@ -366,6 +366,11 @@ class PacksNotifier extends _$PacksNotifier {
       ],
     );
 
+    await save();
+  }
+
+  Future<void> restorePacks(List<PackModel> packs) async {
+    state = AsyncData(packs);
     await save();
   }
 }
