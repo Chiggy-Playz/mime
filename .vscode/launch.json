@@ -5,18 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "mime_flutter",
+            "name": "mime",
             "request": "launch",
             "type": "dart"
         },
         {
-            "name": "mime_flutter (profile mode)",
+            "name": "mime (profile mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "mime_flutter (release mode)",
+            "name": "mime (release mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"
